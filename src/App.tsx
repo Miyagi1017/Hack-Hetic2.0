@@ -124,6 +124,60 @@ const withStoredBudget = (base: Trip, email: string): Trip => {
   return stored == null ? base : { ...base, budgetTotal: stored };
 };
 
+/* ------------------------------------------------------------------
+   Répartition de l'enveloppe (hébergement / restauration), par voyage.
+   ------------------------------------------------------------------ */
+const breakdownStorageKey = (tripId: string, email: string) =>
+  `odyssee:breakdown:${email}:${tripId}`;
+
+const readStoredBreakdown = (
+  tripId: string,
+  email: string
+): { lodging: number; food: number } | null => {
+  try {
+    const raw = window.localStorage.getItem(breakdownStorageKey(tripId, email));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      typeof parsed.lodging !== 'number' ||
+      typeof parsed.food !== 'number' ||
+      parsed.lodging < 0 ||
+      parsed.food < 0
+    ) {
+      return null;
+    }
+    return { lodging: parsed.lodging, food: parsed.food };
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredBreakdown = (
+  tripId: string,
+  email: string,
+  value: { lodging: number; food: number }
+) => {
+  try {
+    window.localStorage.setItem(breakdownStorageKey(tripId, email), JSON.stringify(value));
+  } catch {
+    // Stockage indisponible : la répartition reste en mémoire.
+  }
+};
+
+const withStoredBreakdown = (base: Trip, email: string): Trip => {
+  const stored = readStoredBreakdown(base.id, email);
+  if (!stored) return base;
+  return {
+    ...base,
+    budgetBreakdown: {
+      lodging: stored.lodging,
+      food: stored.food,
+      lodgingLabel: base.budgetBreakdown?.lodgingLabel ?? 'Hébergement',
+    },
+  };
+};
+
 const shuffleItems = <T,>(items: T[]): T[] => {
   const shuffled = [...items];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -172,7 +226,7 @@ export default function App() {
           storedDates.travelers
         )
       : base;
-    return withStoredBudget(dated, email);
+    return withStoredBreakdown(withStoredBudget(dated, email), email);
   });
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -355,7 +409,7 @@ export default function App() {
         )
       : base;
 
-    return withStoredBudget(datedTrip, sessionEmail);
+    return withStoredBreakdown(withStoredBudget(datedTrip, sessionEmail), sessionEmail);
   };
 
   const loadTrip = (nextTrip: Trip) => {
@@ -381,6 +435,30 @@ export default function App() {
     const destination = AVAILABLE_DESTINATIONS.find((item) => item.id === plan.destinationId);
     if (!destination) return;
     loadTrip(buildTripForDestination(destination, plan.id));
+  };
+
+  // Ajuste la répartition de l'enveloppe (hébergement / restauration)
+  const handleBreakdownChange = (next: { lodging: number; food: number }) => {
+    const clampAmount = (value: number) =>
+      Math.max(0, Math.min(trip.budgetTotal, Math.round(value)));
+    const lodging = clampAmount(next.lodging);
+    const food = clampAmount(next.food);
+
+    setTrip((prev) => ({
+      ...prev,
+      budgetBreakdown: {
+        lodging,
+        food,
+        lodgingLabel: prev.budgetBreakdown?.lodgingLabel ?? 'Hébergement',
+      },
+    }));
+    writeStoredBreakdown(trip.id, sessionEmail, { lodging, food });
+    setBudgetNotice(
+      `Répartition ajustée : ${formatEuros(lodging)} d'hébergement et ${formatEuros(
+        food
+      )} de restauration.`
+    );
+    triggerSuccessBanner();
   };
 
   // Ajoute une destination aux séjours prévus (plusieurs ajouts possibles)
@@ -1723,6 +1801,7 @@ export default function App() {
             <BudgetView
               trip={trip}
               onBudgetChange={handleBudgetChange}
+              onBreakdownChange={handleBreakdownChange}
               onEditDates={() => setIsDateModalOpen(true)}
               onPickBudgetActivity={() => {
                 setActiveTab('plan');

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CheckCircle2,
   Bed,
@@ -9,6 +9,10 @@ import {
   TrendingUp,
   CalendarDays,
   ArrowRight,
+  SlidersHorizontal,
+  Minus,
+  Plus,
+  Check,
 } from 'lucide-react';
 import { Trip } from '../types/travel';
 import { getActivityBudget } from '../data/activity-budget';
@@ -17,6 +21,8 @@ import { BudgetPlanner } from './BudgetPlanner';
 interface BudgetViewProps {
   trip: Trip;
   onBudgetChange?: (value: number, adaptActivities?: boolean) => void;
+  /** Ajuste la répartition hébergement / restauration du séjour. */
+  onBreakdownChange?: (next: { lodging: number; food: number }) => void;
   onEditDates?: () => void;
   onPickBudgetActivity?: () => void;
   userName?: string;
@@ -26,6 +32,7 @@ interface BudgetViewProps {
 export const BudgetView: React.FC<BudgetViewProps> = ({
   trip,
   onBudgetChange,
+  onBreakdownChange,
   onEditDates,
   onPickBudgetActivity,
   userName,
@@ -51,6 +58,29 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
     totalActivitiesCost + totalTransportCost + estimatedLodgingCost + estimatedFoodCost;
   const perTraveler = totalCalculated / trip.travelers;
   const remaining = trip.budgetTotal - totalCalculated;
+
+  // Ajustement manuel des postes fixes de l'enveloppe.
+  const [isAdjustingBreakdown, setIsAdjustingBreakdown] = useState(false);
+  const [lodgingDraft, setLodgingDraft] = useState(String(estimatedLodgingCost));
+  const [foodDraft, setFoodDraft] = useState(String(estimatedFoodCost));
+
+  useEffect(() => {
+    setLodgingDraft(String(estimatedLodgingCost));
+  }, [estimatedLodgingCost]);
+
+  useEffect(() => {
+    setFoodDraft(String(estimatedFoodCost));
+  }, [estimatedFoodCost]);
+
+  const draftLodging = Math.max(0, Number(lodgingDraft) || 0);
+  const draftFood = Math.max(0, Number(foodDraft) || 0);
+  const draftRemaining =
+    trip.budgetTotal - draftLodging - draftFood - totalActivitiesCost - totalTransportCost;
+
+  const applyBreakdown = () => {
+    onBreakdownChange?.({ lodging: draftLodging, food: draftFood });
+    setIsAdjustingBreakdown(false);
+  };
   const confirmedCount = allActivities.filter((a) => a.isConfirmed).length;
   const confirmedPercent = allActivities.length
     ? Math.round((confirmedCount / allActivities.length) * 100)
@@ -240,16 +270,140 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
       {/* Répartition */}
       <div className="rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6">
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="font-serif text-xl font-semibold text-ink">Répartition par catégorie</h3>
             <p className="mt-0.5 text-[13px] text-muted">Vue d'ensemble de vos postes de dépense.</p>
           </div>
-          <span className="flex items-center gap-1.5 rounded-full bg-paper px-2.5 py-1 text-[11px] font-semibold text-muted">
-            <Wallet className="h-3 w-3" />
-            {trip.budgetTotal} €
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded-full bg-paper px-2.5 py-1 text-[11px] font-semibold text-muted">
+              <Wallet className="h-3 w-3" />
+              {trip.budgetTotal} €
+            </span>
+            {onBreakdownChange && (
+              <button
+                type="button"
+                onClick={() => setIsAdjustingBreakdown((prev) => !prev)}
+                aria-expanded={isAdjustingBreakdown}
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                  isAdjustingBreakdown
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-line bg-white text-ink-soft hover:border-line-strong hover:text-ink'
+                }`}
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                Ajuster
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Ajustement des enveloppes hébergement / restauration */}
+        {isAdjustingBreakdown && onBreakdownChange && (
+          <div className="mb-5 rounded-2xl border border-line bg-paper p-3.5">
+            <p className="text-[11px] leading-relaxed text-muted">
+              Modifiez les deux postes fixes. La marge restante finance les activités et les
+              transports du programme.
+            </p>
+
+            <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
+              {[
+                {
+                  id: 'lodging-adjust',
+                  label: 'Hébergement (séjour)',
+                  value: lodgingDraft,
+                  setValue: setLodgingDraft,
+                },
+                {
+                  id: 'food-adjust',
+                  label: 'Restauration (séjour)',
+                  value: foodDraft,
+                  setValue: setFoodDraft,
+                },
+              ].map((field) => {
+                const numeric = Math.max(0, Number(field.value) || 0);
+                return (
+                  <div key={field.id}>
+                    <label
+                      htmlFor={field.id}
+                      className="text-[10px] font-semibold uppercase tracking-wider text-muted"
+                    >
+                      {field.label}
+                    </label>
+                    <div className="mt-1 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          field.setValue(String(Math.max(0, Math.round(numeric / 10) * 10 - 20)))
+                        }
+                        aria-label={`Réduire ${field.label} de 20 €`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink-soft hover:border-line-strong hover:text-ink"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <input
+                        id={field.id}
+                        type="number"
+                        min={0}
+                        max={trip.budgetTotal}
+                        step={10}
+                        value={field.value}
+                        onChange={(event) => field.setValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            applyBreakdown();
+                          }
+                        }}
+                        className="w-full rounded-lg border border-line bg-white px-2 py-1.5 text-right font-serif text-sm font-semibold text-ink focus:border-ink focus:outline-none"
+                      />
+                      <span className="text-xs font-semibold text-muted">€</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          field.setValue(String(Math.min(trip.budgetTotal, Math.round(numeric / 10) * 10 + 20)))
+                        }
+                        aria-label={`Augmenter ${field.label} de 20 €`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink-soft hover:border-line-strong hover:text-ink"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span
+                className={`text-[11px] font-semibold ${
+                  draftRemaining < 0 ? 'text-amber-700' : 'text-emerald-700'
+                }`}
+              >
+                {draftRemaining < 0
+                  ? `${Math.abs(draftRemaining).toFixed(0)} € de dépassement`
+                  : `${draftRemaining.toFixed(0)} € de marge pour les activités`}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsAdjustingBreakdown(false)}
+                  className="cursor-pointer rounded-full border border-line bg-white px-3 py-1.5 text-[11px] font-semibold text-ink-soft hover:border-line-strong hover:text-ink"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={applyBreakdown}
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                >
+                  <Check className="h-3 w-3" />
+                  Appliquer la répartition
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-5">
           {categories.map((cat) => (
