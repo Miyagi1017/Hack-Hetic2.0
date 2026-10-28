@@ -642,7 +642,7 @@ export default function App() {
       const daySteps = [...(prev.steps[currentDay] || [])];
 
       if (targetIndex != null && daySteps[targetIndex]) {
-        daySteps[targetIndex] = { ...daySteps[targetIndex], activity };
+        daySteps[targetIndex] = { ...daySteps[targetIndex], activity, conflict: undefined };
       } else {
         daySteps.push({
           activity,

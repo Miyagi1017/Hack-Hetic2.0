@@ -103,7 +103,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
           ].map((item) => (
             <div
               key={item.label}
-              className="rounded-2xl bg-white/8 px-3.5 py-2.5 ring-1 ring-white/10 backdrop-blur-sm"
+              className="rounded-2xl bg-white/10 px-3.5 py-2.5 ring-1 ring-white/10 backdrop-blur-sm"
             >
               <dt className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                 {item.label}
