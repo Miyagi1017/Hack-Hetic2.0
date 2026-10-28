@@ -525,11 +525,14 @@ export default function App() {
     // Rythme de référence par personne et par jour : l'enveloppe reste juste
     // quand la durée ou le nombre de voyageurs évolue.
     const ratePerPersonPerDay = trip.budgetTotal / (previousDays * previousTravelers);
-    const candidateBudget = payload.adaptBudget
-      ? trip.budgetTotal > 0
-        ? ratePerPersonPerDay * nextDays * nextTravelers
-        : 110 * nextDays * nextTravelers
-      : trip.budgetTotal;
+    const candidateBudget =
+      payload.manualBudget != null
+        ? payload.manualBudget
+        : payload.adaptBudget
+          ? trip.budgetTotal > 0
+            ? ratePerPersonPerDay * nextDays * nextTravelers
+            : 110 * nextDays * nextTravelers
+          : trip.budgetTotal;
     const budget = Math.max(0, Math.min(BUDGET_MAX, Math.round(candidateBudget / 10) * 10));
 
     writeStoredBudget(trip.id, sessionEmail, budget);
@@ -559,13 +562,17 @@ export default function App() {
       budget > 0 ? budget / (nextDays * nextTravelers) : ratePerPersonPerDay;
 
     setDatesNotice(
-      payload.adaptBudget
-        ? `${dateLabel} — enveloppe recalculée à ${euroFormat(
+      payload.manualBudget != null
+        ? `${dateLabel} — enveloppe ajustée à ${euroFormat(
             budget
-          )} (${euroFormat(effectiveRate)} / pers. / jour), au même rythme qu'avant.`
-        : `${dateLabel} — enveloppe conservée à ${euroFormat(
-            budget
-          )}. Ajustez-la dans l'onglet Budget si besoin.`
+          )} (${euroFormat(effectiveRate)} / pers. / jour), selon votre réglage manuel.`
+        : payload.adaptBudget
+          ? `${dateLabel} — enveloppe recalculée à ${euroFormat(
+              budget
+            )} (${euroFormat(effectiveRate)} / pers. / jour), au même rythme qu'avant.`
+          : `${dateLabel} — enveloppe conservée à ${euroFormat(
+              budget
+            )}. Ajustez-la dans l'onglet Budget si besoin.`
     );
   };
 

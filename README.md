@@ -11,7 +11,7 @@ Projet HETIC. Application web de planification de voyage : itinéraire jour par 
 - **Budget** : enveloppe de 0 à 100 000 €, curseur + profils (Essentiel, Équilibré, Confort, Signature), saisie manuelle avec validation et recalcul du programme, ajustement de la répartition hébergement / restauration, diagnostic du rythme et optimisation.
 - **Sélecteur d'activités** : activités connues à proximité triées par distance, rayon ajustable, filtrage par enveloppe budgétaire (« Mon budget », « Gratuit », « Tout ») et par centres d'intérêt, ajustement du budget directement dans la fenêtre avec bouton **Appliquer le budget**.
 - **Profil** : connexion simulée, édition du nom, de l'avatar, du style de voyage et des centres d'intérêt, mémorisés par utilisateur.
-- **Dates & voyageurs** : dates, durée (1 à 21 jours) et nombre de voyageurs éditables depuis le planificateur, l'onglet Explorer ou le budget, avec adaptation automatique de l'enveloppe.
+- **Dates & voyageurs** : dates, durée (1 à 21 jours) et nombre de voyageurs éditables depuis le planificateur, l'onglet Explorer ou le budget, avec adaptation automatique de l'enveloppe ou réglage manuel via une barre ajustable.
 - **Explorer** : recommandations par ville, filtre « Mes envies » basé sur le profil, budget maximum.
 - **Comparateur de prix** : offres multi-prestataires, promotions, options gratuites et liens externes.
 - **Règles locales** : restrictions, traditions et festivals par ville/pays, avec alerte dans le planificateur.

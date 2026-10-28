@@ -31,6 +31,8 @@ export interface DateUpdatePayload {
   travelers: number;
   /** true : l'enveloppe suit le rythme quotidien actuel. */
   adaptBudget: boolean;
+  /** Enveloppe choisie manuellement via la barre ajustable. */
+  manualBudget?: number;
 }
 
 interface DateRangeModalProps {
@@ -93,6 +95,7 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
   const [daysCount, setDaysCount] = useState(clampDays(trip.daysCount));
   const [travelers, setTravelers] = useState(clampTravelers(trip.travelers));
   const [adaptBudget, setAdaptBudget] = useState(true);
+  const [manualBudget, setManualBudget] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -100,6 +103,7 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
     setDaysCount(clampDays(trip.daysCount));
     setTravelers(clampTravelers(trip.travelers));
     setAdaptBudget(true);
+    setManualBudget(null);
   }, [isOpen, trip.startDate, trip.daysCount, trip.travelers]);
 
   const preview = useMemo(() => {
@@ -113,17 +117,16 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
     const fallbackRate = 110;
     const rate = currentRate > 0 ? currentRate : fallbackRate;
     const scaled = Math.round((rate * safeDays * safeTravelers) / 10) * 10;
-    const nextBudget = adaptBudget
-      ? Math.max(0, Math.min(BUDGET_MAX, scaled))
-      : Math.max(0, Math.min(BUDGET_MAX, trip.budgetTotal));
+    const nextBudget = Math.max(
+      0,
+      Math.min(BUDGET_MAX, adaptBudget ? scaled : manualBudget ?? trip.budgetTotal)
+    );
 
     return {
       safeDays,
       safeTravelers,
       nights: Math.max(0, safeDays - 1),
-      rate: adaptBudget
-        ? rate * safeTravelers
-        : trip.budgetTotal / safeDays,
+      rate: adaptBudget ? rate * safeTravelers : nextBudget / safeDays,
       nextBudget,
       delta: nextBudget - trip.budgetTotal,
       perPersonPerDay: nextBudget / Math.max(1, safeDays * safeTravelers),
@@ -131,13 +134,17 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
       datesLabel: formatTripDates(startDate, safeDays),
       rangeLabel: formatDateRangeLong(startDate, safeDays),
     };
-  }, [startDate, daysCount, travelers, adaptBudget, trip.budgetTotal, trip.daysCount, trip.travelers]);
+  }, [startDate, daysCount, travelers, adaptBudget, manualBudget, trip.budgetTotal, trip.daysCount, trip.travelers]);
 
   if (!isOpen) return null;
 
   const mood = budgetMood(preview.perPersonPerDay);
   const startInPast =
     Number.isFinite(parseIsoDate(startDate).getTime()) && startDate < todayIso();
+  const sliderMax = Math.max(
+    2000,
+    Math.ceil((Math.max(trip.budgetTotal, preview.nextBudget) * 1.5) / 500) * 500
+  );
 
   const handleConfirm = () => {
     if (!startDate) return;
@@ -146,6 +153,7 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
       daysCount: preview.safeDays,
       travelers: preview.safeTravelers,
       adaptBudget,
+      manualBudget: !adaptBudget && manualBudget != null ? preview.nextBudget : undefined,
     });
   };
 
@@ -374,7 +382,13 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 role="switch"
                 aria-checked={adaptBudget}
                 aria-label="Adapter automatiquement le budget à la durée et au nombre de voyageurs"
-                onClick={() => setAdaptBudget((prev) => !prev)}
+                onClick={() => {
+                  setAdaptBudget((prev) => {
+                    const next = !prev;
+                    if (next) setManualBudget(null);
+                    return next;
+                  });
+                }}
                 className={`relative mt-0.5 h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
                   adaptBudget ? 'bg-emerald-600' : 'bg-line-strong'
                 }`}
@@ -387,6 +401,40 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
               </button>
             </div>
 
+            <div className="mt-3 rounded-xl border border-line bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                  Barre ajustable
+                </span>
+                <span className="font-serif text-base font-semibold text-ink">
+                  {euro(preview.nextBudget)}
+                </span>
+              </div>
+              <input
+                type="range"
+                className="budget-range mt-2 w-full"
+                min={0}
+                max={sliderMax}
+                step={10}
+                value={preview.nextBudget}
+                aria-label="Enveloppe budget ajustable"
+                aria-valuetext={euro(preview.nextBudget)}
+                onChange={(event) => {
+                  setAdaptBudget(false);
+                  setManualBudget(Number(event.target.value));
+                }}
+                style={{ ['--fill' as string]: `${(preview.nextBudget / sliderMax) * 100}%` }}
+              />
+              <div className="mt-1 flex items-center justify-between text-[10px] text-muted">
+                <span>0 €</span>
+                <span>{euro(sliderMax)}</span>
+              </div>
+              <p className="mt-1 text-[10px] leading-relaxed text-muted">
+                Faites glisser pour ajuster l'enveloppe manuellement, ou activez l'adaptation
+                automatique ci-dessus.
+              </p>
+            </div>
+
             <div className="mt-3 space-y-2 rounded-xl border border-line bg-white p-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted">Enveloppe actuelle</span>
@@ -394,7 +442,11 @@ export const DateRangeModal: React.FC<DateRangeModalProps> = ({
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted">
-                  {adaptBudget ? 'Nouvelle enveloppe recalculée' : 'Enveloppe conservée'}
+                  {adaptBudget
+                    ? 'Nouvelle enveloppe recalculée'
+                    : manualBudget != null
+                      ? 'Enveloppe ajustée'
+                      : 'Enveloppe conservée'}
                 </span>
                 <span className="font-serif text-base font-semibold text-ink">
                   {euro(preview.nextBudget)}
