@@ -3,8 +3,7 @@ import {
   Search,
   MapPin,
   Calendar,
-  Users,
-  Star,
+  Users,  Star,
   Plus,
   Check,
   Clock,
@@ -15,6 +14,7 @@ import {
   Pencil,
   RefreshCw,
   CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 import { Activity, ActivityCategory } from '../types/travel';
 import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
@@ -85,6 +85,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
       !onlyInterests || interests.length === 0 || activityMatchesInterests(item, interests);
     return matchesCategory && matchesSearch && matchesBudget && matchesInterests;
   });
+
+  // Activités classées par horaire, pour visualiser celles qui suivent.
+  const chronological = [...filtered].sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <div className="space-y-6">
@@ -238,7 +241,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             </h3>
             <p className="mt-0.5 text-[13px] text-muted">
               {filtered.length} adresse{filtered.length > 1 ? 's' : ''} vérifiée
-              {filtered.length > 1 ? 's' : ''} à {destination}
+              {filtered.length > 1 ? 's' : ''} à {destination} · classées par horaire
             </p>
           </div>
           <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-muted sm:flex">
@@ -269,8 +272,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             </div>
           )}
 
-          {filtered.map((item) => {
+          {chronological.map((item, index) => {
             const isAdded = addedActivityIds.includes(item.id);
+            const nextItem = chronological[index + 1];
             return (
               <article
                 key={item.id}
@@ -321,9 +325,15 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
                 <div className="flex flex-1 flex-col justify-between p-5">
                   <div>
-                    <h4 className="font-serif text-lg font-semibold leading-snug text-ink">
-                      {item.name}
-                    </h4>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-serif text-lg font-semibold leading-snug text-ink">
+                        {item.name}
+                      </h4>
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
+                        <Clock className="h-3 w-3" />
+                        {item.time}
+                      </span>
+                    </div>
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-muted">
                       <MapPin className="h-3 w-3 shrink-0" />
                       <span className="truncate">{item.address}</span>
@@ -331,6 +341,18 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-ink-soft/90">
                       {item.description}
                     </p>
+
+                    {nextItem && (
+                      <p className="mt-2 flex items-start gap-1 text-[10px] leading-relaxed text-muted">
+                        <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-accent" />
+                        <span>
+                          Ensuite :{' '}
+                          <span className="font-semibold text-ink-soft">
+                            {nextItem.time} · {nextItem.name}
+                          </span>
+                        </span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-3">
