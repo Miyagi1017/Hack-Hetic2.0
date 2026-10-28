@@ -1,5 +1,7 @@
 # Odyssée — Planificateur de voyage intelligent
 
+**Démo :** https://hack-hetic2-0.vercel.app · **Dépôt :** https://github.com/Miyagi1017/Hack-Hetic2.0
+
 Projet HETIC. Application web de planification de voyage : itinéraire jour par jour sur carte, budget adaptatif, suggestions d'activités locales et réservations.
 
 ## Fonctionnalités
