@@ -875,6 +875,17 @@ export default function App() {
     triggerSuccessBanner();
   };
 
+  // Valide les filtres de l'onglet Explorer : recalcule les trajets du séjour
+  const handleValidateExploreChoices = (_count: number) => {
+    setTrip((prev) => {
+      const nextSteps: Record<number, ItineraryStep[]> = {};
+      Object.entries(prev.steps).forEach(([day, steps]) => {
+        nextSteps[Number(day)] = recalculateStepsRoute(steps);
+      });
+      return { ...prev, steps: nextSteps };
+    });
+  };
+
   // Reorder steps up/down
   const handleMoveStep = (index: number, direction: 'up' | 'down') => {
     setTrip((prev) => {
@@ -1756,6 +1767,7 @@ export default function App() {
                 travelers={trip.travelers}
                 interests={user.preferences}
                 onEditDates={() => setIsDateModalOpen(true)}
+                onValidateChoices={handleValidateExploreChoices}
               />
             </div>
 

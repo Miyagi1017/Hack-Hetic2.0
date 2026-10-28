@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Search,
   MapPin,
@@ -13,6 +13,8 @@ import {
   Heart,
   Navigation,
   Pencil,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { Activity, ActivityCategory } from '../types/travel';
 import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
@@ -32,6 +34,8 @@ interface ExploreViewProps {
   travelers?: number;
   interests?: string[];
   onEditDates?: () => void;
+  /** Valide les filtres et déclenche le recalcul des trajets du séjour. */
+  onValidateChoices?: (count: number) => void;
 }
 
 export const ExploreView: React.FC<ExploreViewProps> = ({
@@ -47,11 +51,17 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   travelers = 2,
   interests = [],
   onEditDates,
+  onValidateChoices,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ActivityCategory | 'Tous'>('Tous');
   const [maxBudget, setMaxBudget] = useState<number | null>(null);
   const [onlyInterests, setOnlyInterests] = useState(false);
+  const [validatedCount, setValidatedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    setValidatedCount(null);
+  }, [selectedCategory, maxBudget, onlyInterests, searchQuery]);
 
   const categories: { label: ActivityCategory | 'Tous'; emoji: string }[] = [
     { label: 'Tous', emoji: '✨' },
@@ -186,6 +196,36 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           >
             {maxBudget === 20 ? 'Budget ≤ 20 € ✓' : 'Budget ≤ 20 €'}
           </button>
+        </div>
+
+        {/* Validation des filtres + recalcul */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-3">
+          <p className="text-[11px] text-muted">
+            <strong className="font-semibold text-ink-soft">{filtered.length}</strong> adresse
+            {filtered.length > 1 ? 's' : ''} correspond
+            {filtered.length > 1 ? 'ent' : ''} à vos choix.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {validatedCount != null && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Choix validés · {validatedCount} adresse{validatedCount > 1 ? 's' : ''} · trajets
+                recalculés
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setValidatedCount(filtered.length);
+                onValidateChoices?.(filtered.length);
+              }}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-amber-300" />
+              Valider et recalculer
+            </button>
+          </div>
         </div>
       </div>
 
