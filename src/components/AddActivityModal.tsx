@@ -119,6 +119,9 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   const [time, setTime] = useState('16:00');
   const [duration, setDuration] = useState('1h30');
   const [price, setPrice] = useState('15');
+  const [selectedPlaceId, setSelectedPlaceId] = useState('');
+  const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
+  const [isManualAddress, setIsManualAddress] = useState(false);
 
   const [radiusKm, setRadiusKm] = useState<number>(3);
   const [nearbyQuery, setNearbyQuery] = useState('');
@@ -183,6 +186,9 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     setPendingBudget(null);
     setDraftBudget(activityBudget?.budgetTotal ?? 0);
     setUseSavedPosition(true);
+    setSelectedPlaceId('');
+    setSelectedCoords(null);
+    setIsManualAddress(false);
     if (autoLocate) {
       locate();
     } else {
@@ -301,6 +307,43 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     });
   }, [nearby, nearbyQuery, budgetMode, remainingPerPerson, preferInterests, interests]);
 
+  const addressOptions = Array.from(
+    new Set(nearby.map((entry) => entry.activity.address).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const handlePlaceSelect = (id: string) => {
+    setSelectedPlaceId(id);
+    const entry = nearby.find((item) => item.activity.id === id);
+
+    if (!entry) {
+      setSelectedCoords(null);
+      return;
+    }
+
+    const activity = entry.activity;
+    setName(activity.name);
+    setAddress(activity.address);
+    setCategory(activity.category);
+    setTime(activity.time);
+    setDuration(activity.duration);
+    setPrice(String(activity.price ?? 0));
+    setSelectedCoords(
+      typeof activity.lat === 'number' && typeof activity.lng === 'number'
+        ? [activity.lat, activity.lng]
+        : null
+    );
+    setIsManualAddress(false);
+  };
+
+  const handleAddressSelect = (value: string) => {
+    if (value === '__manual__') {
+      setIsManualAddress(true);
+      return;
+    }
+    setIsManualAddress(false);
+    setAddress(value);
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -313,8 +356,8 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
       name: name.trim(),
       category,
       address: address.trim() || `Centre historique, ${city}`,
-      lat: center[0] + (Math.random() - 0.5) * 0.02,
-      lng: center[1] + (Math.random() - 0.5) * 0.02,
+      lat: selectedCoords ? selectedCoords[0] : center[0] + (Math.random() - 0.5) * 0.02,
+      lng: selectedCoords ? selectedCoords[1] : center[1] + (Math.random() - 0.5) * 0.02,
       time,
       duration,
       price: parseFloat(price) || 0,
@@ -857,6 +900,28 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
+                <label className="mb-1 flex items-center gap-1 text-xs font-bold text-ink">
+                  <Navigation className="h-3 w-3 text-muted" />
+                  Lieu dans le périmètre
+                </label>
+                <select
+                  value={selectedPlaceId}
+                  onChange={(e) => handlePlaceSelect(e.target.value)}
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm font-medium text-ink focus:border-ink focus:outline-none"
+                >
+                  <option value="">Choisir un lieu connu ({nearby.length})…</option>
+                  {nearby.map(({ activity, distance }) => (
+                    <option key={activity.id} value={activity.id}>
+                      {activity.name} · {formatDistance(distance)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-muted">
+                  Liste adaptée au rayon et à la position sélectionnés ci-contre.
+                </p>
+              </div>
+
+              <div>
                 <label className="mb-1 block text-xs font-bold text-ink">
                   Nom du lieu ou de l'activité
                 </label>
@@ -909,14 +974,35 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-ink">Adresse ou quartier</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="ex: Piazza del Campidoglio, 1"
-                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm focus:border-ink focus:outline-none"
-                />
+                <label className="mb-1 flex items-center gap-1 text-xs font-bold text-ink">
+                  <MapPin className="h-3 w-3 text-muted" />
+                  Adresse ou quartier
+                </label>
+                <select
+                  value={
+                    isManualAddress ? '__manual__' : addressOptions.includes(address) ? address : ''
+                  }
+                  onChange={(e) => handleAddressSelect(e.target.value)}
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm font-medium text-ink focus:border-ink focus:outline-none"
+                >
+                  <option value="">Choisir une adresse ({addressOptions.length})…</option>
+                  {addressOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                  <option value="__manual__">Saisir une autre adresse…</option>
+                </select>
+
+                {isManualAddress && (
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="ex: Piazza del Campidoglio, 1"
+                    className="mt-2 w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm focus:border-ink focus:outline-none"
+                  />
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
