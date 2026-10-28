@@ -89,7 +89,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticate }) => {
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/25 backdrop-blur-sm">
               <Compass className="h-5 w-5 text-amber-200" />
             </span>
-            <span className="font-serif text-2xl font-semibold tracking-tight text-white">Odyssée</span>
+            <span className="font-serif text-2xl font-semibold tracking-tight text-white">Voyage</span>
           </div>
 
           <div className="relative z-10 max-w-lg">
@@ -136,7 +136,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticate }) => {
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink text-amber-200">
                 <Compass className="h-5 w-5" />
               </span>
-              <span className="font-serif text-2xl font-semibold tracking-tight text-ink">Odyssée</span>
+              <span className="font-serif text-2xl font-semibold tracking-tight text-ink">Voyage</span>
             </div>
 
             <div className="inline-flex rounded-full border border-line bg-white p-1">

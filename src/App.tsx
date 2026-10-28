@@ -743,7 +743,7 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-[22px] font-semibold font-serif text-ink tracking-tight">
-                  Odyssée
+                  Voyage
                 </h1>
                 <button
                   onClick={() => setIsDestinationSelectorOpen(true)}
