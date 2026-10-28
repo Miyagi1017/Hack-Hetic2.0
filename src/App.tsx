@@ -850,6 +850,31 @@ export default function App() {
     setIsAddStepOpen(true);
   };
 
+  // Modifie l'horaire d'une étape, replace les étapes dans l'ordre et
+  // recalcule les temps de trajet de la journée.
+  const handleUpdateStepTime = (index: number, time: string) => {
+    const normalized = time.slice(0, 5);
+    setTrip((prev) => {
+      const daySteps = [...(prev.steps[currentDay] || [])];
+      if (!daySteps[index]) return prev;
+
+      daySteps[index] = {
+        ...daySteps[index],
+        activity: { ...daySteps[index].activity, time: normalized },
+      };
+      daySteps.sort((a, b) => a.activity.time.localeCompare(b.activity.time));
+
+      return {
+        ...prev,
+        steps: {
+          ...prev.steps,
+          [currentDay]: recalculateStepsRoute(daySteps),
+        },
+      };
+    });
+    triggerSuccessBanner();
+  };
+
   // Reorder steps up/down
   const handleMoveStep = (index: number, direction: 'up' | 'down') => {
     setTrip((prev) => {
@@ -1666,6 +1691,7 @@ export default function App() {
                       onMoveUp={idx > 0 ? () => handleMoveStep(idx, 'up') : undefined}
                       onMoveDown={idx < currentSteps.length - 1 ? () => handleMoveStep(idx, 'down') : undefined}
                       onReplace={() => handleStartReplace(idx)}
+                      onUpdateTime={(time) => handleUpdateStepTime(idx, time)}
                     />
                   ))}
 

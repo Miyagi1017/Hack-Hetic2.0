@@ -20,13 +20,22 @@ import {
   ChevronDown,
   Leaf,
   Pencil,
+  X,
+  Check,
 } from 'lucide-react';
 import { ItineraryStep, Activity, PhotoSpotSpotlight } from '../types/travel';
 import { CURATED_PHOTO_SPOTS } from '../data/mock-data';
 import { SafeImage } from './SafeImage';
 
-interface TimelineItemProps {
-  step: ItineraryStep;
+const TIME_PRESETS = [
+  { label: 'Matin', time: '09:00' },
+  { label: 'Déjeuner', time: '12:30' },
+  { label: 'Après-midi', time: '15:00' },
+  { label: 'Dîner', time: '19:30' },
+  { label: 'Soirée', time: '21:30' },
+];
+
+interface TimelineItemProps {  step: ItineraryStep;
   index: number;
   totalSteps: number;
   isSelected: boolean;
@@ -40,6 +49,7 @@ interface TimelineItemProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onReplace?: () => void;
+  onUpdateTime?: (time: string) => void;
 }
 
 export const TimelineItem: React.FC<TimelineItemProps> = ({
@@ -56,12 +66,15 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   onMoveUp,
   onMoveDown,
   onReplace,
+  onUpdateTime,
 }) => {
   const act = step.activity;
   const isConflict = !!step.conflict;
   const scenic = step.scenicPassage;
 
   const [isScenicExpanded, setIsScenicExpanded] = useState(false);
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [draftTime, setDraftTime] = useState(act.time);
 
   // Match photo spot from curated database (aucun repli arbitraire : on n'affiche
   // la bannière que lorsqu'un spot correspond réellement à l'étape)
@@ -123,13 +136,35 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                    isConflict ? 'bg-amber-100 text-amber-800' : 'bg-accent-soft text-accent'
-                  }`}
-                >
-                  {act.time}
-                </span>
+                {onUpdateTime ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDraftTime(act.time);
+                      setIsEditingTime((prev) => !prev);
+                    }}
+                    title="Modifier l'horaire"
+                    aria-label={`Modifier l'horaire de ${act.name}`}
+                    aria-expanded={isEditingTime}
+                    className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                      isConflict
+                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        : 'bg-accent-soft text-accent hover:bg-accent/15'
+                    }`}
+                  >
+                    {act.time}
+                    <Pencil className="h-2.5 w-2.5 opacity-60" />
+                  </button>
+                ) : (
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      isConflict ? 'bg-amber-100 text-amber-800' : 'bg-accent-soft text-accent'
+                    }`}
+                  >
+                    {act.time}
+                  </span>
+                )}
                 <span className="rounded-full bg-paper px-2 py-0.5 text-[10px] font-medium text-muted">
                   {act.category}
                 </span>
@@ -210,6 +245,76 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
                 </div>
               </div>
             </div>
+
+            {isEditingTime && onUpdateTime && (
+              <div className="mt-2 rounded-xl border border-line bg-paper p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                    Nouvel horaire
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingTime(false);
+                    }}
+                    aria-label="Fermer la modification d'horaire"
+                    className="cursor-pointer rounded-full p-0.5 text-muted transition-colors hover:bg-white hover:text-ink"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <input
+                    type="time"
+                    value={draftTime}
+                    onChange={(e) => setDraftTime(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Choisir l'horaire de l'activité"
+                    className="rounded-lg border border-line bg-white px-2 py-1 text-sm font-semibold text-ink focus:border-ink focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!draftTime) return;
+                      onUpdateTime(draftTime);
+                      setIsEditingTime(false);
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-2.5 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                  >
+                    <Check className="h-3 w-3" />
+                    Valider
+                  </button>
+                </div>
+
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {TIME_PRESETS.map((preset) => (
+                    <button
+                      key={preset.time}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDraftTime(preset.time);
+                      }}
+                      aria-pressed={draftTime === preset.time}
+                      className={`cursor-pointer rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                        draftTime === preset.time
+                          ? 'border-ink bg-ink text-white'
+                          : 'border-line bg-white text-ink-soft hover:border-line-strong'
+                      }`}
+                    >
+                      {preset.label} · {preset.time}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="mt-1 text-[10px] leading-relaxed text-muted">
+                  Les étapes sont replacées dans l'ordre chronologique et le trajet est recalculé.
+                </p>
+              </div>
+            )}
 
             <h3 className="mt-2 line-clamp-2 font-serif text-[17px] font-semibold leading-snug text-ink sm:text-lg">
               {act.name}
