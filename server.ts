@@ -4,7 +4,7 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
-import { generateChatReply } from "./server/chat";
+import { generateChatReply } from "./api/chat";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
