@@ -71,6 +71,7 @@ import { WelcomeView } from './components/WelcomeView';
 import type { PlanningCard } from './components/WelcomeView';
 import { AddTripModal } from './components/AddTripModal';
 import { ScheduleModal } from './components/ScheduleModal';
+import type { ScheduleUpdate } from './components/ScheduleModal';
 import { GlobalEditModal } from './components/GlobalEditModal';
 import type { GlobalEditPayload } from './components/GlobalEditModal';
 import { PositionModal } from './components/PositionModal';
@@ -959,35 +960,39 @@ export default function App() {
     triggerSuccessBanner();
   };
 
-  // Valide une série d'horaires depuis la fenêtre « Modifier les horaires »
-  const handleApplySchedule = (day: number, updates: Array<{ index: number; time: string }>) => {
+  // Valide une série d'horaires (jour précis ou tout le séjour) et recalcule tout
+  const handleApplySchedule = (updates: ScheduleUpdate[]) => {
     setTrip((prev) => {
-      const daySteps = [...(prev.steps[day] || [])];
+      const nextSteps: Record<number, ItineraryStep[]> = {};
+      Object.entries(prev.steps).forEach(([day, steps]) => {
+        nextSteps[Number(day)] = [...steps];
+      });
 
-      updates.forEach(({ index, time }) => {
-        if (!daySteps[index] || !time) return;
-        daySteps[index] = {
-          ...daySteps[index],
-          activity: { ...daySteps[index].activity, time: time.slice(0, 5) },
+      updates.forEach(({ day, index, time }) => {
+        const steps = nextSteps[day];
+        if (!steps?.[index] || !time) return;
+        steps[index] = {
+          ...steps[index],
+          activity: { ...steps[index].activity, time: time.slice(0, 5) },
         };
       });
 
-      daySteps.sort((a, b) => a.activity.time.localeCompare(b.activity.time));
+      Object.keys(nextSteps).forEach((dayKey) => {
+        const day = Number(dayKey);
+        nextSteps[day] = recalculateStepsRoute(
+          [...nextSteps[day]].sort((a, b) => a.activity.time.localeCompare(b.activity.time))
+        );
+      });
 
-      return {
-        ...prev,
-        steps: {
-          ...prev.steps,
-          [day]: recalculateStepsRoute(daySteps),
-        },
-      };
+      return { ...prev, steps: nextSteps };
     });
 
     setIsScheduleOpen(false);
+    const touchedDays = new Set(updates.map((update) => update.day)).size;
     setScheduleNotice(
-      `Jour ${day} · ${updates.length} horaire${updates.length > 1 ? 's' : ''} ajusté${
+      `${updates.length} horaire${updates.length > 1 ? 's' : ''} ajusté${
         updates.length > 1 ? 's' : ''
-      } — programme réordonné et trajets recalculés.`
+      } sur ${touchedDays} jour${touchedDays > 1 ? 's' : ''} — programme réordonné et tous les trajets recalculés.`
     );
     triggerSuccessBanner();
   };

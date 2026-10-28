@@ -2,17 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CalendarClock, Check, Clock, X } from 'lucide-react';
 import { Trip } from '../types/travel';
 
+export interface ScheduleUpdate {
+  day: number;
+  index: number;
+  time: string;
+}
+
 interface ScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
   trip: Trip;
   initialDay?: number;
-  onApply: (day: number, updates: Array<{ index: number; time: string }>) => void;
+  onApply: (updates: ScheduleUpdate[]) => void;
 }
 
 /**
- * Édition groupée des horaires d'une journée : on ajuste chaque étape,
- * puis on valide pour réordonner le programme et recalculer les trajets.
+ * Édition des horaires d'une journée ou de tout le séjour.
+ * La validation réordonne chaque journée et recalcule tous les trajets.
  */
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   isOpen,
@@ -21,8 +27,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   initialDay = 1,
   onApply,
 }) => {
-  const [activeDay, setActiveDay] = useState(initialDay);
-  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const [activeDay, setActiveDay] = useState<number | 'all'>(initialDay);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isOpen) return;
@@ -32,16 +38,30 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   if (!isOpen) return null;
 
-  const steps = trip.steps[activeDay] ?? [];
-  const timeFor = (index: number) => drafts[index] ?? steps[index]?.activity.time ?? '09:00';
-  const times = steps.map((_, index) => timeFor(index));
-  const duplicateTimes = times.filter((time, index) => times.indexOf(time) !== index);
+  const days = Array.from({ length: trip.daysCount }, (_, i) => i + 1);
+  const visibleDays = activeDay === 'all' ? days : [activeDay];
+
+  const timeFor = (day: number, index: number) => {
+    const key = `${day}-${index}`;
+    return drafts[key] ?? trip.steps[day]?.[index]?.activity.time ?? '09:00';
+  };
+
+  const duplicateTimes = visibleDays.flatMap((day) => {
+    const steps = trip.steps[day] ?? [];
+    const times = steps.map((_, index) => timeFor(day, index));
+    return times.filter((time, index) => times.indexOf(time) !== index);
+  });
+
+  const hasAnyStep = visibleDays.some((day) => (trip.steps[day] ?? []).length > 0);
 
   const handleApply = () => {
-    onApply(
-      activeDay,
-      steps.map((_, index) => ({ index, time: timeFor(index) }))
-    );
+    const updates: ScheduleUpdate[] = [];
+    visibleDays.forEach((day) => {
+      (trip.steps[day] ?? []).forEach((_, index) => {
+        updates.push({ day, index, time: timeFor(day, index) });
+      });
+    });
+    onApply(updates);
   };
 
   return (
@@ -61,8 +81,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 Modifier les horaires
               </h3>
               <p className="mt-0.5 text-[11px] text-muted">
-                Ajustez l'heure de chaque étape, puis validez : le programme est réordonné et les
-                trajets sont recalculés.
+                Choisissez l'heure de chaque visite ou activité, puis validez : tout est réordonné
+                et recalculé.
               </p>
             </div>
           </div>
@@ -77,7 +97,23 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
         {/* Jours */}
         <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-paper/60 px-5 py-3">
-          {Array.from({ length: trip.daysCount }, (_, i) => i + 1).map((day) => (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveDay('all');
+              setDrafts({});
+            }}
+            aria-pressed={activeDay === 'all'}
+            className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeDay === 'all'
+                ? 'bg-ink text-white'
+                : 'border border-line bg-white text-ink-soft hover:border-line-strong hover:text-ink'
+            }`}
+          >
+            Tout le séjour
+          </button>
+
+          {days.map((day) => (
             <button
               key={day}
               type="button"
@@ -95,49 +131,68 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               J{day}
             </button>
           ))}
-          <span className="ml-auto text-[10px] font-medium text-muted">
-            {steps.length} étape{steps.length > 1 ? 's' : ''}
-          </span>
         </div>
 
         {/* Étapes */}
-        <div className="space-y-2 overflow-y-auto p-5">
-          {steps.length === 0 && (
+        <div className="space-y-3 overflow-y-auto p-5">
+          {!hasAnyStep && (
             <p className="rounded-xl border border-dashed border-line bg-paper px-3 py-6 text-center text-xs text-muted">
-              Aucune activité ce jour : ajoutez une étape depuis le planificateur.
+              Aucune activité sur cette sélection : ajoutez une étape depuis le planificateur.
             </p>
           )}
 
-          {steps.map((step, index) => {
-            const time = timeFor(index);
-            const duplicate = times.filter((value) => value === time).length > 1;
+          {visibleDays.map((day) => {
+            const steps = trip.steps[day] ?? [];
+            if (steps.length === 0) return null;
             return (
-              <div
-                key={`${step.activity.id}-${index}`}
-                className={`flex items-center gap-3 rounded-xl border p-2.5 ${
-                  duplicate ? 'border-amber-200 bg-amber-50/70' : 'border-line bg-white'
-                }`}
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper text-[10px] font-bold text-ink">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-1 text-xs font-semibold text-ink">{step.activity.name}</p>
-                  <p className="mt-0.5 text-[10px] text-muted">
-                    {step.activity.category} · {step.activity.duration}
+              <div key={day}>
+                {activeDay === 'all' && (
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                    Jour {day} · {steps.length} étape{steps.length > 1 ? 's' : ''}
                   </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted" />
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(event) =>
-                      setDrafts((prev) => ({ ...prev, [index]: event.target.value }))
-                    }
-                    aria-label={`Horaire de ${step.activity.name}`}
-                    className="rounded-lg border border-line bg-paper px-2 py-1 text-sm font-semibold text-ink focus:border-ink focus:outline-none"
-                  />
+                )}
+
+                <div className="space-y-2">
+                  {steps.map((step, index) => {
+                    const time = timeFor(day, index);
+                    const dayTimes = steps.map((_, i) => timeFor(day, i));
+                    const duplicate = dayTimes.filter((value) => value === time).length > 1;
+                    return (
+                      <div
+                        key={`${day}-${step.activity.id}-${index}`}
+                        className={`flex items-center gap-3 rounded-xl border p-2.5 ${
+                          duplicate ? 'border-amber-200 bg-amber-50/70' : 'border-line bg-white'
+                        }`}
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper text-[10px] font-bold text-ink">
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-1 text-xs font-semibold text-ink">
+                            {step.activity.name}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-muted">
+                            {step.activity.category} · {step.activity.duration}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Clock className="h-3 w-3 text-muted" />
+                          <input
+                            type="time"
+                            value={time}
+                            onChange={(event) =>
+                              setDrafts((prev) => ({
+                                ...prev,
+                                [`${day}-${index}`]: event.target.value,
+                              }))
+                            }
+                            aria-label={`Horaire de ${step.activity.name} (jour ${day})`}
+                            className="rounded-lg border border-line bg-paper px-2 py-1 text-sm font-semibold text-ink focus:border-ink focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -164,11 +219,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <button
             type="button"
             onClick={handleApply}
-            disabled={steps.length === 0}
+            disabled={!hasAnyStep}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-default disabled:opacity-50"
           >
             <Check className="h-3.5 w-3.5" />
-            Valider et recalculer
+            Valider et tout recalculer
           </button>
         </div>
       </div>
