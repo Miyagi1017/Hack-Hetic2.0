@@ -32,6 +32,7 @@ import {
   Pencil,
   Coins,
   RefreshCw,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 import { Activity, ItineraryStep, Trip, ConflictSolution, DestinationOption, Reservation, PhotoSpotSpotlight, UserProfile } from './types/travel';
@@ -70,6 +71,8 @@ import { WelcomeView } from './components/WelcomeView';
 import type { PlanningCard } from './components/WelcomeView';
 import { AddTripModal } from './components/AddTripModal';
 import { ScheduleModal } from './components/ScheduleModal';
+import { GlobalEditModal } from './components/GlobalEditModal';
+import type { GlobalEditPayload } from './components/GlobalEditModal';
 import {
   TripPlan,
   createRandomTripPlans,
@@ -249,6 +252,8 @@ export default function App() {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleDay, setScheduleDay] = useState(1);
   const [scheduleNotice, setScheduleNotice] = useState<string | null>(null);
+  const [isGlobalEditOpen, setIsGlobalEditOpen] = useState(false);
+  const [globalNotice, setGlobalNotice] = useState<string | null>(null);
   
   // Photo Spot Spotlight Modal state (Google, Instagram, Pinterest, Facebook)
   const [selectedPhotoSpot, setSelectedPhotoSpot] = useState<PhotoSpotSpotlight | null>(null);
@@ -931,7 +936,61 @@ export default function App() {
     });
   };
 
-  // Reorder steps up/down
+  // Validation globale : dates, voyageurs, budget, répartition + recalcul de tout
+  const handleApplyGlobalEdit = (payload: GlobalEditPayload) => {
+    const nextDays = clampDaysCount(payload.daysCount);
+    const nextTravelers = clampTravelers(payload.travelers);
+    const budget = Math.max(0, Math.min(BUDGET_MAX, Math.round(payload.budgetTotal / 10) * 10));
+
+    let nextTrip: Trip = applyDatesToTrip(trip, payload.startDate, nextDays, nextTravelers);
+    nextTrip = {
+      ...nextTrip,
+      budgetTotal: budget,
+      budgetBreakdown: {
+        lodging: payload.lodging,
+        food: payload.food,
+        lodgingLabel: trip.budgetBreakdown?.lodgingLabel ?? 'Hébergement',
+      },
+    };
+
+    let removed = 0;
+    if (payload.adaptActivities) {
+      const result = recalculateProgramForBudget(nextTrip);
+      nextTrip = result.trip;
+      removed = result.removed;
+    } else {
+      const nextSteps: Record<number, ItineraryStep[]> = {};
+      Object.entries(nextTrip.steps).forEach(([day, steps]) => {
+        nextSteps[Number(day)] = recalculateStepsRoute(steps);
+      });
+      nextTrip = { ...nextTrip, steps: nextSteps };
+    }
+
+    setTrip(nextTrip);
+    setCurrentDay((prev) => Math.min(prev, nextDays));
+    writeStoredBudget(nextTrip.id, sessionEmail, budget);
+    writeStoredTripDates(nextTrip.id, sessionEmail, {
+      startDate: payload.startDate,
+      daysCount: nextDays,
+      travelers: nextTravelers,
+    });
+    writeStoredBreakdown(nextTrip.id, sessionEmail, {
+      lodging: payload.lodging,
+      food: payload.food,
+    });
+
+    setIsGlobalEditOpen(false);
+    setGlobalNotice(
+      `Séjour recalculé : ${nextDays} jour${nextDays > 1 ? 's' : ''} · ${nextTravelers} voyageur${
+        nextTravelers > 1 ? 's' : ''
+      } · ${formatEuros(budget)}.${
+        removed > 0
+          ? ` ${removed} activité${removed > 1 ? 's' : ''} retirée${removed > 1 ? 's' : ''} pour tenir dans l'enveloppe.`
+          : ' Toutes les activités tiennent dans l\'enveloppe.'
+      }`
+    );
+    triggerSuccessBanner();
+  };
   const handleMoveStep = (index: number, direction: 'up' | 'down') => {
     setTrip((prev) => {
       const daySteps = [...(prev.steps[currentDay] || [])];
@@ -1359,6 +1418,28 @@ export default function App() {
           </div>
         )}
 
+        {/* ============ GLOBAL UPDATE NOTICE ============ */}
+        {globalNotice && (
+          <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50/90 p-4 shadow-xs animate-in sm:p-5">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-violet-700 ring-1 ring-violet-200">
+                <RefreshCw className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink">Tout a été recalculé</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{globalNotice}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setGlobalNotice(null)}
+              aria-label="Masquer la notification de recalcul global"
+              className="rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* ============ SCHEDULE UPDATED NOTICE ============ */}
         {scheduleNotice && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-sky-200 bg-sky-50/90 p-4 shadow-xs animate-in sm:p-5">
@@ -1427,6 +1508,7 @@ export default function App() {
               setScheduleDay(currentDay);
               setIsScheduleOpen(true);
             }}
+            onOpenGlobalEdit={() => setIsGlobalEditOpen(true)}
             onOpenPlan={handleOpenPlan}
             onAddDestination={() => setIsAddTripOpen(true)}
           />
@@ -1601,6 +1683,15 @@ export default function App() {
                   >
                     <Clock className="h-3.5 w-3.5 text-accent" />
                     <span>Horaires</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsGlobalEditOpen(true)}
+                    title="Modifier tous les choix et tout recalculer"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2.5 text-xs font-semibold text-ink shadow-2xs transition-colors hover:border-line-strong hover:bg-paper"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-accent" />
+                    <span>Tout modifier</span>
                   </button>
 
                   {/* Programme aléatoire */}
@@ -2054,6 +2145,13 @@ export default function App() {
         trip={trip}
         initialDay={scheduleDay}
         onApply={handleApplySchedule}
+      />
+
+      <GlobalEditModal
+        isOpen={isGlobalEditOpen}
+        onClose={() => setIsGlobalEditOpen(false)}
+        trip={trip}
+        onApply={handleApplyGlobalEdit}
       />
 
       <AddActivityModal

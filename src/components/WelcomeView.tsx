@@ -9,6 +9,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react';
 import { DestinationOption, Trip, UserProfile } from '../types/travel';
@@ -35,6 +36,7 @@ interface WelcomeViewProps {
   onOpenNearby: () => void;
   onOpenDates: () => void;
   onOpenSchedule: () => void;
+  onOpenGlobalEdit: () => void;
   onOpenPlan: (planId: string) => void;
   onAddDestination: () => void;
 }
@@ -56,6 +58,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   onOpenNearby,
   onOpenDates,
   onOpenSchedule,
+  onOpenGlobalEdit,
   onOpenPlan,
   onAddDestination,
 }) => {
@@ -117,6 +120,15 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
             >
               <Pencil className="h-3 w-3" />
               Modifier
+            </button>
+            <button
+              type="button"
+              onClick={onOpenGlobalEdit}
+              title="Modifier tous les choix et tout recalculer"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-amber-300 px-3 py-1.5 text-[11px] font-bold text-ink transition-colors hover:bg-amber-200"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Tout modifier
             </button>
           </div>
         </div>
