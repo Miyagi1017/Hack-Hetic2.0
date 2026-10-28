@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Coins,
   Compass,
+  Clock,
   LocateFixed,
   MapPin,
   Pencil,
@@ -29,9 +30,11 @@ interface WelcomeViewProps {
   trip: Trip;
   activitiesCount: number;
   plannings: PlanningCard[];
+  scheduleLabel: string;
   onOpenPlanner: () => void;
   onOpenNearby: () => void;
   onOpenDates: () => void;
+  onOpenSchedule: () => void;
   onOpenPlan: (planId: string) => void;
   onAddDestination: () => void;
 }
@@ -48,9 +51,11 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   trip,
   activitiesCount,
   plannings,
+  scheduleLabel,
   onOpenPlanner,
   onOpenNearby,
   onOpenDates,
+  onOpenSchedule,
   onOpenPlan,
   onAddDestination,
 }) => {
@@ -94,6 +99,16 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
               <CalendarDays className="h-3.5 w-3.5 text-amber-300" />
               {trip.dates}
             </span>
+            <button
+              type="button"
+              onClick={onOpenSchedule}
+              title="Modifier les horaires des activités"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold ring-1 ring-white/15 transition-colors hover:bg-white/20"
+            >
+              <Clock className="h-3.5 w-3.5 text-amber-300" />
+              {scheduleLabel}
+              <Pencil className="h-3 w-3 text-white/70" />
+            </button>
             <button
               type="button"
               onClick={onOpenDates}
