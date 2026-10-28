@@ -23,6 +23,7 @@ import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
 import { activityMatchesInterests } from '../data/interests';
 import { formatDistance, haversineKm } from '../data/geo';
 import { SafeImage } from './SafeImage';
+import { ActivityTimeModal } from './ActivityTimeModal';
 
 interface ExploreViewProps {
   onAddActivityToTrip: (activity: Activity) => void;
@@ -80,6 +81,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ start: string; end: string } | null>(null);
   const [isCustomTime, setIsCustomTime] = useState(false);
+  const [pendingTimeActivity, setPendingTimeActivity] = useState<Activity | null>(null);
 
   useEffect(() => {
     setValidatedCount(null);
@@ -222,18 +224,17 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         }}
                         className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-paper"
                       >
-                        <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
-                          {item.time}
+                        <span className="shrink-0 rounded-full bg-paper px-2 py-0.5 text-[10px] font-semibold text-muted">
+                          {item.category}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-xs font-semibold text-ink">
                             {item.name}
                           </span>
                           <span className="block truncate text-[10px] text-muted">
-                            {item.category}
                             {itemDistance != null
-                              ? ` · ${formatDistance(itemDistance)} de ${referenceLabel}`
-                              : ''}
+                              ? `${formatDistance(itemDistance)} de ${referenceLabel}`
+                              : item.address}
                           </span>
                         </span>
                       </button>
@@ -588,15 +589,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
                 <div className="flex flex-1 flex-col justify-between p-5">
                   <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-serif text-lg font-semibold leading-snug text-ink">
-                        {item.name}
-                      </h4>
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
-                        <Clock className="h-3 w-3" />
-                        {item.time}
-                      </span>
-                    </div>
+                    <h4 className="font-serif text-lg font-semibold leading-snug text-ink">
+                      {item.name}
+                    </h4>
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-muted">
                       <MapPin className="h-3 w-3 shrink-0" />
                       <span className="truncate">{item.address}</span>
@@ -610,9 +605,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-accent" />
                         <span>
                           Ensuite :{' '}
-                          <span className="font-semibold text-ink-soft">
-                            {nextItem.time} · {nextItem.name}
-                          </span>
+                          <span className="font-semibold text-ink-soft">{nextItem.name}</span>
                         </span>
                       </p>
                     )}
@@ -676,7 +669,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       </button>
 
                       <button
-                        onClick={() => onAddActivityToTrip(item)}
+                        onClick={() => setPendingTimeActivity(item)}
                         disabled={isAdded}
                         className={`flex h-8 items-center gap-1 rounded-full px-3 text-[11px] font-semibold ${
                           isAdded
@@ -726,6 +719,19 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </div>
         )}
       </div>
+
+      <ActivityTimeModal
+        isOpen={!!pendingTimeActivity}
+        activity={pendingTimeActivity}
+        slot={timeFilter}
+        onClose={() => setPendingTimeActivity(null)}
+        onConfirm={(time) => {
+          if (pendingTimeActivity) {
+            onAddActivityToTrip({ ...pendingTimeActivity, time });
+          }
+          setPendingTimeActivity(null);
+        }}
+      />
     </div>
   );
 };

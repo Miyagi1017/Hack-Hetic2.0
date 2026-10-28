@@ -886,6 +886,8 @@ export default function App() {
         });
       }
 
+      daySteps.sort((a, b) => a.activity.time.localeCompare(b.activity.time));
+
       return {
         ...prev,
         steps: {

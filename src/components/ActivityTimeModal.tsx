@@ -1,0 +1,117 @@
+import React, { useEffect, useState } from 'react';
+import { Check, Clock, MapPin, X } from 'lucide-react';
+import { Activity } from '../types/travel';
+
+interface ActivityTimeModalProps {
+  isOpen: boolean;
+  activity: Activity | null;
+  /** Tranche horaire sélectionnée dans Explorer, pour rappel. */
+  slot?: { start: string; end: string } | null;
+  onClose: () => void;
+  onConfirm: (time: string) => void;
+}
+
+/**
+ * Au moment d'ajouter une activité au séjour, l'utilisateur choisit
+ * lui-même l'heure à laquelle il souhaite la faire.
+ */
+export const ActivityTimeModal: React.FC<ActivityTimeModalProps> = ({
+  isOpen,
+  activity,
+  slot,
+  onClose,
+  onConfirm,
+}) => {
+  const [time, setTime] = useState(activity?.time ?? '18:00');
+
+  useEffect(() => {
+    if (isOpen && activity) setTime(activity.time);
+  }, [isOpen, activity]);
+
+  if (!isOpen || !activity) return null;
+
+  const slotLabel = slot ? `${slot.start} – ${slot.end}` : null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-0 backdrop-blur-xs animate-in fade-in duration-200 sm:items-center sm:p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-t-3xl border border-line bg-white shadow-2xl sm:rounded-[26px]">
+        <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ink text-amber-300">
+              <Clock className="h-5 w-5" />
+            </span>
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+                Ajouter au séjour
+              </span>
+              <h3 className="font-serif text-xl font-semibold leading-tight text-ink">
+                À quelle heure ?
+              </h3>
+              <p className="mt-0.5 text-[11px] text-muted">
+                Choisissez librement l'heure de cette activité.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fermer le choix de l'horaire"
+            className="cursor-pointer rounded-full p-2 text-muted transition-colors hover:bg-paper hover:text-ink"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-5">
+          <div className="rounded-2xl border border-line bg-paper p-3">
+            <p className="text-sm font-semibold text-ink">{activity.name}</p>
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
+              <MapPin className="h-3 w-3" />
+              <span className="truncate">{activity.address}</span>
+            </p>
+            {slotLabel && (
+              <p className="mt-1 text-[10px] font-medium text-accent">
+                Tranche choisie dans Explorer : {slotLabel}
+              </p>
+            )}
+          </div>
+
+          <label
+            htmlFor="activity-time"
+            className="mt-4 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            Heure souhaitée
+          </label>
+          <input
+            id="activity-time"
+            type="time"
+            value={time}
+            onChange={(event) => setTime(event.target.value)}
+            className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-lg font-semibold text-ink focus:border-ink focus:outline-none"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-line bg-white p-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-full border border-line bg-white px-4 py-2.5 text-xs font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!time) return;
+              onConfirm(time.slice(0, 5));
+            }}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Ajouter à {time || '--:--'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
