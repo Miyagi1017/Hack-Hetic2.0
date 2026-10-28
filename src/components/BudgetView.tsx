@@ -16,7 +16,7 @@ import { BudgetPlanner } from './BudgetPlanner';
 
 interface BudgetViewProps {
   trip: Trip;
-  onBudgetChange?: (value: number) => void;
+  onBudgetChange?: (value: number, adaptActivities?: boolean) => void;
   onEditDates?: () => void;
   onPickBudgetActivity?: () => void;
   userName?: string;

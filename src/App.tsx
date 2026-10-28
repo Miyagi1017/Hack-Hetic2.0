@@ -67,6 +67,15 @@ import { DateRangeModal } from './components/DateRangeModal';
 import type { DateUpdatePayload } from './components/DateRangeModal';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeView } from './components/WelcomeView';
+import type { PlanningCard } from './components/WelcomeView';
+import { AddTripModal } from './components/AddTripModal';
+import {
+  TripPlan,
+  createRandomTripPlans,
+  createTripPlan,
+  readTripPlans,
+  writeTripPlans,
+} from './data/trip-plans';
 import { clearSession, readSession, saveSession, SessionUser } from './data/session';
 import { getCityFestivals, getCityTraditions } from './data/local-traditions';
 import { getCityRestrictions } from './data/local-restrictions';
@@ -170,6 +179,18 @@ export default function App() {
   const [activeConflictStep, setActiveConflictStep] = useState<ItineraryStep | null>(null);
   const [resolvedBanner, setResolvedBanner] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'plan' | 'explore' | 'wishlist' | 'photospots' | 'reservations' | 'restrictions' | 'budget'>('home');
+
+  // Séjours prévus : trois destinations aléatoires au premier lancement,
+  // puis celles ajoutées manuellement (persistées par utilisateur).
+  const [tripPlans, setTripPlans] = useState<TripPlan[]>(() => {
+    const email = readSession()?.email ?? CURRENT_USER.email;
+    const stored = readTripPlans(email);
+    if (stored.length > 0) return stored;
+    const generated = createRandomTripPlans(3);
+    writeTripPlans(email, generated);
+    return generated;
+  });
+  const [isAddTripOpen, setIsAddTripOpen] = useState(false);
   
   // Photo Spot Spotlight Modal state (Google, Instagram, Pinterest, Facebook)
   const [selectedPhotoSpot, setSelectedPhotoSpot] = useState<PhotoSpotSpotlight | null>(null);
@@ -308,14 +329,14 @@ export default function App() {
   // All planned activities for reservation management
   const allPlannedActivities = Object.values(trip.steps).flat().map((s) => s.activity);
 
-  // Switch destination dynamically
-  const handleSelectDestination = (dest: DestinationOption) => {
-    const nextTrip: Trip =
+  // Construit un séjour complet pour une destination (avec dates et budget mémorisés)
+  const buildTripForDestination = (dest: DestinationOption, forcedId?: string): Trip => {
+    const base: Trip =
       dest.id === 'dest-paris'
-        ? INITIAL_TRIP_PARIS
+        ? { ...INITIAL_TRIP_PARIS, id: forcedId ?? INITIAL_TRIP_PARIS.id }
         : {
             ...INITIAL_TRIP_ROME,
-            id: `${dest.id.replace('dest-', 'trip-')}-2026`,
+            id: forcedId ?? `${dest.id.replace('dest-', 'trip-')}-2026`,
             destination: `${dest.name}, ${dest.country}`,
             country: dest.country,
             center: dest.center,
@@ -324,17 +345,21 @@ export default function App() {
             restrictions: getCityRestrictions(dest.name),
           };
 
-    const storedDates = readStoredTripDates(nextTrip.id, sessionEmail);
+    const storedDates = readStoredTripDates(base.id, sessionEmail);
     const datedTrip = storedDates
       ? applyDatesToTrip(
-          nextTrip,
+          base,
           storedDates.startDate,
           storedDates.daysCount,
           storedDates.travelers
         )
-      : nextTrip;
+      : base;
 
-    setTrip(withStoredBudget(datedTrip, sessionEmail));
+    return withStoredBudget(datedTrip, sessionEmail);
+  };
+
+  const loadTrip = (nextTrip: Trip) => {
+    setTrip(nextTrip);
     setCurrentDay(1);
     setSelectedActivity(null);
     setRandomNotice(null);
@@ -343,6 +368,50 @@ export default function App() {
     setActiveTab('plan');
     triggerSuccessBanner();
   };
+
+  // Switch destination dynamically
+  const handleSelectDestination = (dest: DestinationOption) => {
+    loadTrip(buildTripForDestination(dest));
+  };
+
+  // Ouvre un séjour prévu depuis l'accueil
+  const handleOpenPlan = (planId: string) => {
+    const plan = tripPlans.find((item) => item.id === planId);
+    if (!plan) return;
+    const destination = AVAILABLE_DESTINATIONS.find((item) => item.id === plan.destinationId);
+    if (!destination) return;
+    loadTrip(buildTripForDestination(destination, plan.id));
+  };
+
+  // Ajoute une destination aux séjours prévus (plusieurs ajouts possibles)
+  const handleAddPlan = (destinationId: string) => {
+    const plan = createTripPlan(destinationId);
+    if (!plan) return;
+    const next = [...tripPlans, plan];
+    setTripPlans(next);
+    writeTripPlans(sessionEmail, next);
+    triggerSuccessBanner();
+  };
+
+  const planCards: PlanningCard[] = tripPlans.flatMap((plan) => {
+    const destination = AVAILABLE_DESTINATIONS.find((item) => item.id === plan.destinationId);
+    if (!destination) return [];
+    const stored = readStoredTripDates(plan.id, sessionEmail);
+    const storedBudget = readStoredBudget(plan.id, sessionEmail);
+    return [
+      {
+        id: plan.id,
+        destination,
+        dates: stored
+          ? formatTripDates(stored.startDate, stored.daysCount)
+          : INITIAL_TRIP_ROME.dates,
+        daysCount: stored?.daysCount ?? INITIAL_TRIP_ROME.daysCount,
+        travelers: stored?.travelers ?? INITIAL_TRIP_ROME.travelers,
+        budgetTotal: storedBudget ?? INITIAL_TRIP_ROME.budgetTotal,
+        isCurrent: trip.id === plan.id,
+      },
+    ];
+  });
 
   // Enveloppe budget : met à jour le séjour et mémorise le choix du voyageur.
   // `adaptActivities` retire les activités qui ne tiennent plus dans l'enveloppe.
@@ -1161,10 +1230,12 @@ export default function App() {
             user={user}
             trip={trip}
             activitiesCount={Object.values(trip.steps).flat().length}
+            plannings={planCards}
             onOpenPlanner={() => setActiveTab('plan')}
             onOpenNearby={handleOpenNearby}
             onOpenDates={() => setIsDateModalOpen(true)}
-            onSelectDestination={handleSelectDestination}
+            onOpenPlan={handleOpenPlan}
+            onAddDestination={() => setIsAddTripOpen(true)}
           />
         )}
 
@@ -1762,6 +1833,13 @@ export default function App() {
       />
 
       {/* ============ MODAL AJOUT D'ÉTAPE ============ */}
+      <AddTripModal
+        isOpen={isAddTripOpen}
+        onClose={() => setIsAddTripOpen(false)}
+        plannedDestinationIds={tripPlans.map((plan) => plan.destinationId)}
+        onAdd={handleAddPlan}
+      />
+
       <AddActivityModal
         isOpen={isAddStepOpen}
         onClose={() => {

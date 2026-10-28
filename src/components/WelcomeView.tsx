@@ -7,21 +7,33 @@ import {
   LocateFixed,
   MapPin,
   Pencil,
+  Plus,
   Users,
 } from 'lucide-react';
 import { DestinationOption, Trip, UserProfile } from '../types/travel';
-import { AVAILABLE_DESTINATIONS } from '../data/mock-data';
 import { formatEuros } from '../data/activity-budget';
 import { SafeImage } from './SafeImage';
+
+export interface PlanningCard {
+  id: string;
+  destination: DestinationOption;
+  dates: string;
+  daysCount: number;
+  travelers: number;
+  budgetTotal: number;
+  isCurrent: boolean;
+}
 
 interface WelcomeViewProps {
   user: UserProfile;
   trip: Trip;
   activitiesCount: number;
+  plannings: PlanningCard[];
   onOpenPlanner: () => void;
   onOpenNearby: () => void;
   onOpenDates: () => void;
-  onSelectDestination: (destination: DestinationOption) => void;
+  onOpenPlan: (planId: string) => void;
+  onAddDestination: () => void;
 }
 
 const todayLabel = () =>
@@ -35,15 +47,15 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   user,
   trip,
   activitiesCount,
+  plannings,
   onOpenPlanner,
   onOpenNearby,
   onOpenDates,
-  onSelectDestination,
+  onOpenPlan,
+  onAddDestination,
 }) => {
   const firstName = user.name.split(' ')[0] || user.name;
   const city = trip.destination.split(',')[0];
-  const isCurrent = (destination: DestinationOption) =>
-    trip.destination.toLowerCase().startsWith(destination.name.toLowerCase());
 
   return (
     <div className="space-y-6">
@@ -174,7 +186,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
         </button>
       </section>
 
-      {/* Autres plannings */}
+      {/* Séjours prévus */}
       <section>
         <div className="mb-3 flex items-end justify-between gap-3 px-1">
           <div>
@@ -182,55 +194,69 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
               Mes plannings
             </h2>
             <p className="mt-0.5 text-xs text-muted">
-              Consultez un autre séjour prévu ou préparez une nouvelle destination.
+              Consultez vos séjours prévus ou ajoutez plusieurs destinations.
             </p>
           </div>
           <span className="shrink-0 rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-semibold text-muted">
-            {AVAILABLE_DESTINATIONS.length} destinations
+            {plannings.length} séjour{plannings.length > 1 ? 's' : ''}
           </span>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {AVAILABLE_DESTINATIONS.map((destination) => {
-            const active = isCurrent(destination);
-            return (
-              <button
-                key={destination.id}
-                type="button"
-                onClick={() => onSelectDestination(destination)}
-                aria-pressed={active}
-                className={`group relative h-32 overflow-hidden rounded-2xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                  active ? 'border-ink ring-2 ring-ink/70' : 'border-line'
-                }`}
-              >
-                <SafeImage
-                  src={destination.coverImage}
-                  alt={destination.name}
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  icon={<MapPin className="h-5 w-5 text-white/70" aria-hidden="true" />}
-                />
-                <span
-                  className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/35 to-transparent"
-                  aria-hidden="true"
-                />
-                <span className="absolute inset-x-0 bottom-0 p-3">
-                  <span className="flex items-center gap-1.5">
-                    <span className="font-serif text-base font-semibold text-white">
-                      {destination.name}
+          {plannings.map((planning) => (
+            <button
+              key={planning.id}
+              type="button"
+              onClick={() => onOpenPlan(planning.id)}
+              aria-pressed={planning.isCurrent}
+              className={`group relative h-36 overflow-hidden rounded-2xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                planning.isCurrent ? 'border-ink ring-2 ring-ink/70' : 'border-line'
+              }`}
+            >
+              <SafeImage
+                src={planning.destination.coverImage}
+                alt={planning.destination.name}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                icon={<MapPin className="h-5 w-5 text-white/70" aria-hidden="true" />}
+              />
+              <span
+                className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent"
+                aria-hidden="true"
+              />
+              <span className="absolute inset-x-0 bottom-0 p-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="font-serif text-base font-semibold text-white">
+                    {planning.destination.name}
+                  </span>
+                  {planning.isCurrent && (
+                    <span className="rounded-full bg-amber-300 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink">
+                      En cours
                     </span>
-                    {active && (
-                      <span className="rounded-full bg-amber-300 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink">
-                        En cours
-                      </span>
-                    )}
-                  </span>
-                  <span className="mt-0.5 block text-[10px] text-white/70">
-                    {destination.country}
-                  </span>
+                  )}
                 </span>
-              </button>
-            );
-          })}
+                <span className="mt-0.5 block text-[10px] text-white/75">
+                  {planning.destination.country} · {planning.dates}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-white/60">
+                  {planning.daysCount} jour{planning.daysCount > 1 ? 's' : ''} ·{' '}
+                  {planning.travelers} voyageur{planning.travelers > 1 ? 's' : ''} ·{' '}
+                  {formatEuros(planning.budgetTotal)}
+                </span>
+              </span>
+            </button>
+          ))}
+
+          <button
+            type="button"
+            onClick={onAddDestination}
+            className="flex h-36 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong bg-white/60 px-4 text-center transition-colors hover:border-ink hover:bg-white"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-paper text-ink ring-1 ring-line">
+              <Plus className="h-4 w-4" />
+            </span>
+            <span className="text-xs font-semibold text-ink">Ajouter une destination</span>
+            <span className="text-[10px] text-muted">Plusieurs séjours possibles</span>
+          </button>
         </div>
       </section>
     </div>

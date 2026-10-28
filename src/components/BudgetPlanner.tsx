@@ -1,5 +1,5 @@
-import React from 'react';
-import { Minus, Plus, Sparkles, Wallet } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Minus, Plus, Sparkles, Wallet, RefreshCw } from 'lucide-react';
 
 export const BUDGET_MIN = 0;
 export const BUDGET_MAX = 100000;
@@ -10,7 +10,11 @@ const euro = (value: number) =>
 interface BudgetPlannerProps {
   /** Enveloppe totale choisie (0 → 100 000 €) */
   value: number;
-  onChange: (value: number) => void;
+  /**
+   * Met à jour l'enveloppe. `adaptActivities` retire les activités qui ne
+   * tiennent plus dans le nouveau budget et recalcule les trajets.
+   */
+  onChange: (value: number, adaptActivities?: boolean) => void;
   /** Montant déjà engagé / estimé pour le séjour */
   spent: number;
   spentLabel?: string;
@@ -68,6 +72,28 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
   const isOver = remaining < 0;
   const isTight = !isOver && pct >= 85;
   const barColor = isOver ? 'bg-accent' : isTight ? 'bg-amber-500' : 'bg-emerald-600';
+
+  // Saisie manuelle : le budget n'est appliqué qu'à la validation,
+  // avec ou sans recalcul des activités.
+  const [manualValue, setManualValue] = useState(String(safeValue));
+
+  useEffect(() => {
+    setManualValue(String(safeValue));
+  }, [safeValue]);
+
+  const applyManualBudget = (adaptActivities: boolean) => {
+    const parsed = Number.parseInt(manualValue, 10);
+    if (!Number.isFinite(parsed)) {
+      setManualValue(String(safeValue));
+      return;
+    }
+    const next = clamp(snap(parsed));
+    onChange(next, adaptActivities);
+    setManualValue(String(next));
+  };
+
+  const manualBudgetNumber = Number.parseInt(manualValue, 10);
+  const manualDelta = Number.isFinite(manualBudgetNumber) ? manualBudgetNumber - safeValue : 0;
   const remainingColor = isOver
     ? 'text-accent'
     : isTight
@@ -242,6 +268,67 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
           <span>{euro(safeValue)}</span>
           <span>100 000 €</span>
         </div>
+      </div>
+
+      {/* Saisie manuelle + recalcul */}
+      <div className="mt-3 rounded-xl border border-line bg-paper px-3 py-2.5">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <label
+              htmlFor="budget-manual"
+              className="text-[10px] font-semibold uppercase tracking-wider text-muted"
+            >
+              Modifier manuellement
+            </label>
+            <div className="mt-1 flex items-center gap-1">
+              <input
+                id="budget-manual"
+                type="number"
+                inputMode="numeric"
+                min={BUDGET_MIN}
+                max={BUDGET_MAX}
+                step={50}
+                value={manualValue}
+                onChange={(event) => setManualValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyManualBudget(true);
+                  }
+                }}
+                aria-label="Budget total saisi manuellement"
+                className="w-28 rounded-lg border border-line bg-white px-2 py-1.5 text-right font-serif text-base font-semibold text-ink focus:border-ink focus:outline-none"
+              />
+              <span className="text-sm font-semibold text-muted">€</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => applyManualBudget(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Valider et recalculer
+            </button>
+            <button
+              type="button"
+              onClick={() => applyManualBudget(false)}
+              className="cursor-pointer text-[10px] font-semibold text-muted underline underline-offset-2 hover:text-ink"
+            >
+              Appliquer sans recalcul
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-1.5 text-[10px] leading-relaxed text-muted">
+          {manualDelta === 0
+            ? 'Le programme est déjà calibré sur cette enveloppe.'
+            : manualDelta > 0
+              ? `+${euro(manualDelta)} : davantage de marge pour les activités.`
+              : `${euro(Math.abs(manualDelta))} de moins : le recalcul retirera les activités qui ne tiennent plus.`}
+        </p>
       </div>
 
       {/* Consommation */}
