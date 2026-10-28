@@ -45,6 +45,14 @@ interface ExploreViewProps {
   center?: [number, number];
 }
 
+const TIME_SLOTS = [
+  { id: 'morning', label: 'Matin', start: '06:00', end: '12:00' },
+  { id: 'lunch', label: 'Déjeuner', start: '12:00', end: '15:00' },
+  { id: 'afternoon', label: 'Après-midi', start: '15:00', end: '18:00' },
+  { id: 'dinner', label: 'Dîner', start: '18:00', end: '21:00' },
+  { id: 'night', label: 'Soirée', start: '21:00', end: '02:00' },
+];
+
 export const ExploreView: React.FC<ExploreViewProps> = ({
   onAddActivityToTrip,
   onFocusOnMap,
@@ -70,10 +78,18 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [validatedCount, setValidatedCount] = useState<number | null>(null);
   const [isDestinationOpen, setIsDestinationOpen] = useState(false);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [timeFilter, setTimeFilter] = useState<{ start: string; end: string } | null>(null);
+  const [isCustomTime, setIsCustomTime] = useState(false);
 
   useEffect(() => {
     setValidatedCount(null);
-  }, [selectedCategory, maxBudget, onlyInterests, searchQuery, distanceKm]);
+  }, [selectedCategory, maxBudget, onlyInterests, searchQuery, distanceKm, timeFilter]);
+
+  const matchesTimeRange = (time: string) => {
+    if (!timeFilter) return true;
+    const { start, end } = timeFilter;
+    return start <= end ? time >= start && time <= end : time >= start || time <= end;
+  };
 
   const referencePoint: [number, number] = position ?? center ?? [41.8902, 12.4922];
   const referenceLabel = position ? positionLabel ?? 'ma position' : `${destination} centre`;
@@ -107,16 +123,25 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     const itemDistance = distanceTo(item);
     const matchesDistance =
       distanceKm == null || (itemDistance != null && itemDistance <= distanceKm);
-    return matchesCategory && matchesSearch && matchesBudget && matchesInterests && matchesDistance;
+    const matchesTime = matchesTimeRange(item.time);
+    return (
+      matchesCategory &&
+      matchesSearch &&
+      matchesBudget &&
+      matchesInterests &&
+      matchesDistance &&
+      matchesTime
+    );
   });
 
   // Toutes les activités disponibles, classées par horaire (menu destination).
   const destinationOptions = [...POPULAR_RECOMMENDATIONS]
     .filter(
       (item) =>
-        search.length === 0 ||
-        item.name.toLowerCase().includes(search) ||
-        item.address.toLowerCase().includes(search)
+        (search.length === 0 ||
+          item.name.toLowerCase().includes(search) ||
+          item.address.toLowerCase().includes(search)) &&
+        matchesTimeRange(item.time)
     )
     .sort((a, b) => a.time.localeCompare(b.time));
 
@@ -174,7 +199,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 />
                 <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-line bg-white p-1.5 shadow-xl">
                   <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-                    Toutes les activités · classées par horaire
+                    Toutes les activités
+                    {timeFilter ? ` · ${timeFilter.start} – ${timeFilter.end}` : ''} · classées par
+                    horaire
                   </p>
 
                   {destinationOptions.length === 0 && (
@@ -339,6 +366,102 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               ? `Périmètre ${distanceKm} km · ${referenceLabel}`
               : `Référence : ${referenceLabel}`}
           </span>
+        </div>
+
+        {/* Tranche horaire */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+            <Clock className="h-3 w-3" />
+            Tranche horaire
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTimeFilter(null);
+              setIsCustomTime(false);
+            }}
+            aria-pressed={!timeFilter}
+            className={`shrink-0 cursor-pointer rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+              !timeFilter
+                ? 'border-ink bg-ink text-white'
+                : 'border-line bg-white text-ink-soft hover:border-line-strong'
+            }`}
+          >
+            Toutes
+          </button>
+
+          {TIME_SLOTS.map((slot) => {
+            const active =
+              timeFilter?.start === slot.start && timeFilter?.end === slot.end;
+            return (
+              <button
+                key={slot.id}
+                type="button"
+                onClick={() => {
+                  setIsCustomTime(false);
+                  setTimeFilter(active ? null : { start: slot.start, end: slot.end });
+                }}
+                aria-pressed={active}
+                className={`shrink-0 cursor-pointer rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                  active
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-line bg-white text-ink-soft hover:border-line-strong'
+                }`}
+              >
+                {slot.label} · {slot.start}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsCustomTime((prev) => {
+                const next = !prev;
+                if (next && !timeFilter) setTimeFilter({ start: '18:00', end: '23:00' });
+                return next;
+              });
+            }}
+            aria-pressed={isCustomTime}
+            className={`shrink-0 cursor-pointer rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+              isCustomTime
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-line bg-white text-ink-soft hover:border-line-strong'
+            }`}
+          >
+            Personnalisée
+          </button>
+
+          {isCustomTime && (
+            <span className="inline-flex items-center gap-1">
+              <input
+                type="time"
+                value={timeFilter?.start ?? '18:00'}
+                onChange={(event) =>
+                  setTimeFilter({
+                    start: event.target.value,
+                    end: timeFilter?.end ?? '23:00',
+                  })
+                }
+                aria-label="Début de la tranche horaire"
+                className="rounded-lg border border-line bg-white px-2 py-1 text-[11px] font-semibold text-ink focus:border-ink focus:outline-none"
+              />
+              <span className="text-[10px] text-muted">→</span>
+              <input
+                type="time"
+                value={timeFilter?.end ?? '23:00'}
+                onChange={(event) =>
+                  setTimeFilter({
+                    start: timeFilter?.start ?? '18:00',
+                    end: event.target.value,
+                  })
+                }
+                aria-label="Fin de la tranche horaire"
+                className="rounded-lg border border-line bg-white px-2 py-1 text-[11px] font-semibold text-ink focus:border-ink focus:outline-none"
+              />
+            </span>
+          )}
         </div>
 
         {/* Validation des filtres + recalcul */}
