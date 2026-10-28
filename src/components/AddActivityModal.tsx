@@ -59,6 +59,9 @@ interface AddActivityModalProps {
   currentActivityId?: string;
   /** Demande la position au moment de l'ouverture. */
   autoLocate?: boolean;
+  /** Position enregistrée par l'utilisateur (GPS ou définie manuellement). */
+  savedPosition?: [number, number];
+  savedPositionLabel?: string;
 }
 
 type BudgetMode = 'fit' | 'free' | 'all';
@@ -97,6 +100,8 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   mode = 'add',
   currentActivityId,
   autoLocate = false,
+  savedPosition,
+  savedPositionLabel,
 }) => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<ActivityCategory>('Culture');
@@ -113,6 +118,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   const [draftBudget, setDraftBudget] = useState(0);
   const [pendingBudget, setPendingBudget] = useState<number | null>(null);
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+  const [useSavedPosition, setUseSavedPosition] = useState(true);
   const [geoStatus, setGeoStatus] = useState<'idle' | 'locating' | 'ready' | 'error'>('idle');
   const [geoError, setGeoError] = useState<string | null>(null);
 
@@ -143,9 +149,17 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     );
   };
 
-  const referencePoint = userPosition ?? anchor ?? center;
-  const referenceLabel = userPosition ? 'ma position' : anchorLabel ?? `${city} centre`;
-  const isFarFromCity = userPosition ? haversineKm(userPosition, center) > 80 : false;
+  const referencePoint =
+    userPosition ?? (useSavedPosition ? savedPosition : undefined) ?? anchor ?? center;
+  const referenceLabel = userPosition
+    ? 'ma position'
+    : useSavedPosition && savedPosition
+      ? savedPositionLabel ?? 'ma position enregistrée'
+      : anchorLabel ?? `${city} centre`;
+  const isFarFromCity =
+    (userPosition || (useSavedPosition && savedPosition))
+      ? haversineKm(referencePoint, center) > 80
+      : false;
   const remainingPerPerson = activityBudget?.remainingPerPerson ?? Number.POSITIVE_INFINITY;
 
   // Chaque ouverture repart sur les filtres recommandés.
@@ -158,6 +172,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     setIsAdjustingBudget(false);
     setPendingBudget(null);
     setDraftBudget(activityBudget?.budgetTotal ?? 0);
+    setUseSavedPosition(true);
     if (autoLocate) {
       locate();
     } else {
@@ -369,6 +384,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                   type="button"
                   onClick={() => {
                     setUserPosition(null);
+                    setUseSavedPosition(false);
                     setGeoStatus('idle');
                     setGeoError(null);
                   }}

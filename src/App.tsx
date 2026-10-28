@@ -73,6 +73,9 @@ import { AddTripModal } from './components/AddTripModal';
 import { ScheduleModal } from './components/ScheduleModal';
 import { GlobalEditModal } from './components/GlobalEditModal';
 import type { GlobalEditPayload } from './components/GlobalEditModal';
+import { PositionModal } from './components/PositionModal';
+import { SavedPosition, readSavedPosition, writeSavedPosition } from './data/position';
+import { haversineKm } from './data/geo';
 import {
   TripPlan,
   createRandomTripPlans,
@@ -254,6 +257,12 @@ export default function App() {
   const [scheduleNotice, setScheduleNotice] = useState<string | null>(null);
   const [isGlobalEditOpen, setIsGlobalEditOpen] = useState(false);
   const [globalNotice, setGlobalNotice] = useState<string | null>(null);
+  const [position, setPosition] = useState<SavedPosition | null>(() =>
+    readSavedPosition(sessionEmail)
+  );
+  const [isPositionOpen, setIsPositionOpen] = useState(false);
+  const [locatingPosition, setLocatingPosition] = useState(false);
+  const [positionError, setPositionError] = useState<string | null>(null);
   
   // Photo Spot Spotlight Modal state (Google, Instagram, Pinterest, Facebook)
   const [selectedPhotoSpot, setSelectedPhotoSpot] = useState<PhotoSpotSpotlight | null>(null);
@@ -621,15 +630,18 @@ export default function App() {
         Math.round(
           ((ratePerPersonPerDay * dated.daysCount * Math.max(1, dated.travelers)) as number) / 10
         ) * 10;
-      return { ...dated, budgetTotal: stored ?? scaledDefault };
+      return withStoredBreakdown({ ...dated, budgetTotal: stored ?? scaledDefault }, nextUser.email);
     });
     setCurrentDay(1);
+    setPosition(readSavedPosition(nextUser.email));
+    setPositionError(null);
   };
 
   const handleLogout = () => {
     clearSession();
     setIsProfileOpen(false);
     setSession(null);
+    setPosition(null);
   };
 
   // Mise à jour du profil et des centres d'intérêt (mémorisés avec la session)
@@ -805,6 +817,59 @@ export default function App() {
     setTimeout(() => setResolvedBanner(false), 4500);
   };
 
+  // Position actuelle : GPS (actualiser) ou définition manuelle
+  const persistPosition = (next: SavedPosition) => {
+    setPosition(next);
+    writeSavedPosition(sessionEmail, next);
+    setPositionError(null);
+  };
+
+  const handleLocatePosition = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setPositionError("La géolocalisation n'est pas disponible sur cet appareil.");
+      return;
+    }
+
+    setLocatingPosition(true);
+    setPositionError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (result) => {
+        const lat = result.coords.latitude;
+        const lng = result.coords.longitude;
+        const nearest = AVAILABLE_DESTINATIONS.map((destination) => ({
+          destination,
+          km: haversineKm([lat, lng], destination.center),
+        })).sort((a, b) => a.km - b.km)[0];
+
+        const label =
+          nearest && nearest.km <= 60
+            ? `${nearest.destination.name} (GPS)`
+            : `Ma position · ${lat.toFixed(2)}, ${lng.toFixed(2)}`;
+
+        persistPosition({
+          lat,
+          lng,
+          label,
+          source: 'gps',
+          updatedAt: new Date().toISOString(),
+        });
+        setLocatingPosition(false);
+      },
+      () => {
+        setLocatingPosition(false);
+        setPositionError(
+          'Localisation refusée ou indisponible. Définissez votre position manuellement ci-dessous.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
+  const handleSelectPosition = (next: SavedPosition) => {
+    persistPosition(next);
+  };
+
   // Add an activity to Day's Itinerary (ou remplace l'étape en cours)
   const handleAddActivity = (activity: Activity) => {
     const targetIndex = replacingStepIndex;
@@ -851,7 +916,7 @@ export default function App() {
   // Ouvre le sélecteur d'activités autour de la position de l'utilisateur
   const handleOpenNearby = () => {
     setReplacingStepIndex(null);
-    setAutoLocateNearby(true);
+    setAutoLocateNearby(!position);
     setIsAddStepOpen(true);
   };
 
@@ -1501,6 +1566,7 @@ export default function App() {
             activitiesCount={Object.values(trip.steps).flat().length}
             plannings={planCards}
             scheduleLabel={dayScheduleLabel}
+            positionLabel={position?.label ?? `${cityName} centre (par défaut)`}
             onOpenPlanner={() => setActiveTab('plan')}
             onOpenNearby={handleOpenNearby}
             onOpenDates={() => setIsDateModalOpen(true)}
@@ -1509,6 +1575,14 @@ export default function App() {
               setIsScheduleOpen(true);
             }}
             onOpenGlobalEdit={() => setIsGlobalEditOpen(true)}
+            onRefreshPosition={() => {
+              setIsPositionOpen(true);
+              handleLocatePosition();
+            }}
+            onOpenPosition={() => {
+              setPositionError(null);
+              setIsPositionOpen(true);
+            }}
             onOpenPlan={handleOpenPlan}
             onAddDestination={() => setIsAddTripOpen(true)}
           />
@@ -2154,6 +2228,16 @@ export default function App() {
         onApply={handleApplyGlobalEdit}
       />
 
+      <PositionModal
+        isOpen={isPositionOpen}
+        onClose={() => setIsPositionOpen(false)}
+        current={position}
+        locating={locatingPosition}
+        error={positionError}
+        onLocate={handleLocatePosition}
+        onSelect={handleSelectPosition}
+      />
+
       <AddActivityModal
         isOpen={isAddStepOpen}
         onClose={() => {
@@ -2180,6 +2264,8 @@ export default function App() {
             : undefined
         }
         autoLocate={autoLocateNearby}
+        savedPosition={position ? [position.lat, position.lng] : undefined}
+        savedPositionLabel={position?.label}
         onOpenBudget={() => {
           setIsAddStepOpen(false);
           setReplacingStepIndex(null);

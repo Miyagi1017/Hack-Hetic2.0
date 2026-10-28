@@ -32,11 +32,14 @@ interface WelcomeViewProps {
   activitiesCount: number;
   plannings: PlanningCard[];
   scheduleLabel: string;
+  positionLabel: string;
   onOpenPlanner: () => void;
   onOpenNearby: () => void;
   onOpenDates: () => void;
   onOpenSchedule: () => void;
   onOpenGlobalEdit: () => void;
+  onRefreshPosition: () => void;
+  onOpenPosition: () => void;
   onOpenPlan: (planId: string) => void;
   onAddDestination: () => void;
 }
@@ -54,11 +57,14 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   activitiesCount,
   plannings,
   scheduleLabel,
+  positionLabel,
   onOpenPlanner,
   onOpenNearby,
   onOpenDates,
   onOpenSchedule,
   onOpenGlobalEdit,
+  onRefreshPosition,
+  onOpenPosition,
   onOpenPlan,
   onAddDestination,
 }) => {
@@ -151,6 +157,32 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
             </div>
           ))}
         </dl>
+
+        {/* Position actuelle */}
+        <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold ring-1 ring-white/15">
+            <MapPin className="h-3.5 w-3.5 text-amber-300" />
+            Position actuelle : {positionLabel}
+          </span>
+          <button
+            type="button"
+            onClick={onRefreshPosition}
+            title="Actualiser ma position GPS"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold ring-1 ring-white/15 transition-colors hover:bg-white/20"
+          >
+            <LocateFixed className="h-3.5 w-3.5 text-amber-300" />
+            Actualiser
+          </button>
+          <button
+            type="button"
+            onClick={onOpenPosition}
+            title="Définir la position manuellement"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold ring-1 ring-white/15 transition-colors hover:bg-white/20"
+          >
+            <Pencil className="h-3 w-3 text-white/70" />
+            Définir
+          </button>
+        </div>
       </section>
 
       {/* Deux points d'entrée */}
