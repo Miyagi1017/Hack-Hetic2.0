@@ -33,8 +33,12 @@ const INTEREST_TO_CATEGORIES: { pattern: RegExp; categories: ActivityCategory[] 
     categories: ['Nature'],
   },
   {
+    pattern: /vie nocturne|nocturne|soirée|sortie|bar|club|fête|cocktail|cinéma|dansant/i,
+    categories: ['Vie nocturne', 'Insolite'],
+  },
+  {
     pattern: /insolite|secret|souterrain|nocturne|bar|club|fête/i,
-    categories: ['Insolite'],
+    categories: ['Insolite', 'Vie nocturne'],
   },
   {
     pattern: /photo|panorama|vue|coucher de soleil/i,

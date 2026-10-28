@@ -59,6 +59,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     { label: 'Culture', emoji: '🏛️' },
     { label: 'Nature', emoji: '🌿' },
     { label: 'Insolite', emoji: '🗝️' },
+    { label: 'Vie nocturne', emoji: '🌙' },
   ];
 
   const filtered = POPULAR_RECOMMENDATIONS.filter((item) => {

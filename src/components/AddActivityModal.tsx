@@ -73,6 +73,7 @@ const categoryEmoji: Record<string, string> = {
   Gastronomie: '🍝',
   Nature: '🌿',
   Insolite: '🗝️',
+  'Vie nocturne': '🌙',
   Hébergement: '🛏️',
   Transport: '🚋',
 };
@@ -858,6 +859,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                     <option value="Gastronomie">🍝 Gastronomie</option>
                     <option value="Nature">🌿 Nature</option>
                     <option value="Insolite">🗝️ Insolite</option>
+                    <option value="Vie nocturne">🌙 Vie nocturne</option>
                   </select>
                 </div>
 

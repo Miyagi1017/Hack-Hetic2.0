@@ -1,4 +1,4 @@
-export type ActivityCategory = 'Culture' | 'Gastronomie' | 'Nature' | 'Insolite' | 'Hébergement' | 'Transport';
+export type ActivityCategory = 'Culture' | 'Gastronomie' | 'Nature' | 'Insolite' | 'Vie nocturne' | 'Hébergement' | 'Transport';
 
 export type BookingKind = 'billet' | 'activité' | 'événement' | 'festivité' | 'gratuit';
 
