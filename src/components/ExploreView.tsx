@@ -1,0 +1,405 @@
+import React, { useState } from 'react';
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Users,
+  Star,
+  Plus,
+  Check,
+  Clock,
+  Compass,
+  Sparkles,
+  Heart,
+  Navigation,
+  Pencil,
+} from 'lucide-react';
+import { Activity, ActivityCategory } from '../types/travel';
+import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
+import { activityMatchesInterests } from '../data/interests';
+import { SafeImage } from './SafeImage';
+
+interface ExploreViewProps {
+  onAddActivityToTrip: (activity: Activity) => void;
+  onFocusOnMap: (activity: Activity) => void;
+  onAskAIAboutActivity: (name: string) => void;
+  onOpenComparator?: (activity: Activity) => void;
+  onToggleWishlist?: (activity: Activity) => void;
+  wishlistIds?: string[];
+  addedActivityIds: string[];
+  destination?: string;
+  dates?: string;
+  travelers?: number;
+  interests?: string[];
+  onEditDates?: () => void;
+}
+
+export const ExploreView: React.FC<ExploreViewProps> = ({
+  onAddActivityToTrip,
+  onFocusOnMap,
+  onAskAIAboutActivity,
+  onOpenComparator,
+  onToggleWishlist,
+  wishlistIds = [],
+  addedActivityIds,
+  destination = 'Rome',
+  dates = '14 - 17 Nov.',
+  travelers = 2,
+  interests = [],
+  onEditDates,
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ActivityCategory | 'Tous'>('Tous');
+  const [maxBudget, setMaxBudget] = useState<number | null>(null);
+  const [onlyInterests, setOnlyInterests] = useState(false);
+
+  const categories: { label: ActivityCategory | 'Tous'; emoji: string }[] = [
+    { label: 'Tous', emoji: '✨' },
+    { label: 'Gastronomie', emoji: '🍝' },
+    { label: 'Culture', emoji: '🏛️' },
+    { label: 'Nature', emoji: '🌿' },
+    { label: 'Insolite', emoji: '🗝️' },
+  ];
+
+  const filtered = POPULAR_RECOMMENDATIONS.filter((item) => {
+    const query = searchQuery.trim().toLowerCase();
+    const matchesCategory = selectedCategory === 'Tous' || item.category === selectedCategory;
+    const matchesSearch =
+      query.length === 0 ||
+      item.name.toLowerCase().includes(query) ||
+      item.address.toLowerCase().includes(query) ||
+      item.description?.toLowerCase().includes(query);
+    const matchesBudget = maxBudget === null || item.price <= maxBudget;
+    const matchesInterests =
+      !onlyInterests || interests.length === 0 || activityMatchesInterests(item, interests);
+    return matchesCategory && matchesSearch && matchesBudget && matchesInterests;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Recherche & filtres */}
+      <div className="rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6">
+        <div className="mb-5 max-w-2xl">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
+            Exploration
+          </span>
+          <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            Des pépites pour votre prochain voyage
+          </h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">
+            Adresses vérifiées, expériences locales et coups de cœur à {destination}.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-4">
+          <div className="relative md:col-span-2">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Destination, monument, quartier..."
+              className="w-full rounded-xl border border-line bg-paper py-3 pl-10 pr-4 text-sm font-medium text-ink placeholder:text-muted/80 focus:border-line-strong focus:bg-white focus:outline-none focus:ring-2 focus:ring-ink/5"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={onEditDates}
+            disabled={!onEditDates}
+            title="Modifier les dates et le nombre de voyageurs"
+            className="group flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-paper px-3.5 py-3 text-left text-sm text-ink-soft transition-colors hover:border-accent/40 hover:bg-white disabled:cursor-default disabled:hover:border-line disabled:hover:bg-paper"
+          >
+            <Calendar className="h-4 w-4 shrink-0 text-muted" />
+            <span className="truncate">{dates}</span>
+            {onEditDates && (
+              <Pencil className="ml-auto h-3 w-3 shrink-0 text-muted transition-colors group-hover:text-accent" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onEditDates}
+            disabled={!onEditDates}
+            title="Modifier le nombre de voyageurs"
+            className="group flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-paper px-3.5 py-3 text-left text-sm text-ink-soft transition-colors hover:border-accent/40 hover:bg-white disabled:cursor-default disabled:hover:border-line disabled:hover:bg-paper"
+          >
+            <Users className="h-4 w-4 shrink-0 text-muted" />
+            <span>
+              {travelers} voyageur{travelers > 1 ? 's' : ''}
+            </span>
+            {onEditDates && (
+              <Pencil className="ml-auto h-3 w-3 shrink-0 text-muted transition-colors group-hover:text-accent" />
+            )}
+          </button>
+        </div>
+
+        {/* Catégories */}
+        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {categories.map((cat) => (
+            <button
+              key={cat.label}
+              onClick={() => setSelectedCategory(cat.label)}
+              aria-pressed={selectedCategory === cat.label}
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold ${
+                selectedCategory === cat.label
+                  ? 'bg-ink text-white shadow-xs'
+                  : 'border border-line bg-white text-muted hover:border-line-strong hover:text-ink'
+              }`}
+            >
+              <span>{cat.emoji}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
+
+          <button
+            onClick={() => setOnlyInterests((prev) => !prev)}
+            aria-pressed={onlyInterests}
+            title="Filtrer selon les centres d'intérêt du profil"
+            className={`ml-auto inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+              onlyInterests
+                ? 'border-rose-300 bg-rose-50 text-rose-800'
+                : 'border-line bg-white text-muted hover:border-line-strong hover:text-ink'
+            }`}
+          >
+            <Heart
+              className={`h-3.5 w-3.5 ${
+                onlyInterests ? 'fill-rose-500 text-rose-500' : 'text-rose-400'
+              }`}
+            />
+            {onlyInterests ? 'Mes envies ✓' : 'Mes envies'}
+            {interests.length > 0 && (
+              <span className="rounded-full bg-white/70 px-1.5 text-[10px] text-ink-soft">
+                {interests.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setMaxBudget(maxBudget === 20 ? null : 20)}
+            className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-semibold ${
+              maxBudget === 20
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                : 'border-line bg-white text-muted hover:text-ink'
+            }`}
+          >
+            {maxBudget === 20 ? 'Budget ≤ 20 € ✓' : 'Budget ≤ 20 €'}
+          </button>
+        </div>
+      </div>
+
+      {/* Grille de recommandations */}
+      <div>
+        <div className="mb-4 flex items-end justify-between gap-3 px-1">
+          <div>
+            <h3 className="font-serif text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+              {searchQuery.trim() ? `Résultats pour « ${searchQuery.trim()} »` : 'Suggestions pour vous'}
+            </h3>
+            <p className="mt-0.5 text-[13px] text-muted">
+              {filtered.length} adresse{filtered.length > 1 ? 's' : ''} vérifiée
+              {filtered.length > 1 ? 's' : ''} à {destination}
+            </p>
+          </div>
+          <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-muted sm:flex">
+            <Compass className="h-3 w-3" />
+            Sélection Odyssée
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {filtered.length === 0 && (
+            <div className="col-span-full rounded-[24px] border border-dashed border-line bg-white px-5 py-10 text-center">
+              <Sparkles className="mx-auto h-5 w-5 text-gold" />
+              <p className="mt-2 text-sm font-semibold text-ink">Aucune adresse ne correspond</p>
+              <p className="mt-1 text-xs text-muted">
+                Essayez sans le filtre « Mes envies » ou élargissez votre recherche.
+              </p>
+              <button
+                onClick={() => {
+                  setOnlyInterests(false);
+                  setSelectedCategory('Tous');
+                  setMaxBudget(null);
+                  setSearchQuery('');
+                }}
+                className="mt-3 cursor-pointer rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
+              >
+                Réinitialiser les filtres
+              </button>
+            </div>
+          )}
+
+          {filtered.map((item) => {
+            const isAdded = addedActivityIds.includes(item.id);
+            return (
+              <article
+                key={item.id}
+                className="group flex flex-col overflow-hidden rounded-[24px] border border-line bg-white shadow-xs transition-all hover:border-line-strong hover:shadow-md"
+              >
+                <div className="relative h-44 w-full overflow-hidden bg-paper-deep">
+                  <SafeImage
+                    src={item.image}
+                    alt={item.name}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    icon={<MapPin className="h-6 w-6 text-ink/20" aria-hidden="true" />}
+                  />
+                  <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/25 to-transparent" />
+
+                  <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink backdrop-blur-sm">
+                    {item.category}
+                  </span>
+
+                  <div className="absolute right-3 top-3 flex items-center gap-1.5">
+                    {item.rating && (
+                      <span className="flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-xs backdrop-blur-sm">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        {item.rating}
+                      </span>
+                    )}
+
+                    {onToggleWishlist && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleWishlist(item);
+                        }}
+                        title={wishlistIds.includes(item.id) ? "Retirer de ma liste d'envies" : "Ajouter à ma liste d'envies"}
+                        aria-label={wishlistIds.includes(item.id) ? "Retirer de ma liste d'envies" : "Ajouter à ma liste d'envies"}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-xs backdrop-blur-sm hover:scale-105"
+                      >
+                        <Heart
+                          className={`h-3.5 w-3.5 ${
+                            wishlistIds.includes(item.id)
+                              ? 'fill-rose-500 text-rose-500'
+                              : 'text-ink-soft'
+                          }`}
+                        />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-1 flex-col justify-between p-5">
+                  <div>
+                    <h4 className="font-serif text-lg font-semibold leading-snug text-ink">
+                      {item.name}
+                    </h4>
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-muted">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{item.address}</span>
+                    </p>
+                    <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-ink-soft/90">
+                      {item.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-3">
+                    <div>
+                      {onOpenComparator ? (
+                        <button
+                          onClick={() => onOpenComparator(item)}
+                          className="group/price text-left"
+                          title="Comparer les prix"
+                        >
+                          <span className="block text-sm font-semibold text-ink">
+                            {item.price > 0 ? `${item.price} €` : 'Gratuit'}
+                          </span>
+                          <span className="block text-[10px] font-medium text-accent underline decoration-accent/30 underline-offset-2 group-hover/price:decoration-accent">
+                            Comparer les prix
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="text-sm font-semibold text-ink">
+                          {item.price > 0 ? `${item.price} €` : 'Gratuit'}
+                        </span>
+                      )}
+                      <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
+                        <Clock className="h-3 w-3" />
+                        {item.duration}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <a
+                        href={
+                          item.googleMapsUrl ||
+                          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.address)}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Ouvrir dans Google Maps"
+                        aria-label="Ouvrir dans Google Maps"
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:border-line-strong hover:bg-paper"
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                      </a>
+
+                      <button
+                        onClick={() => onAskAIAboutActivity(item.name)}
+                        title="Demander des détails à l'IA"
+                        aria-label="Demander des détails à l'IA"
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:border-line-strong hover:bg-paper"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-accent" />
+                      </button>
+
+                      <button
+                        onClick={() => onFocusOnMap(item)}
+                        className="flex h-8 items-center justify-center rounded-full border border-line px-2.5 text-[11px] font-semibold text-ink-soft hover:border-line-strong hover:bg-paper"
+                      >
+                        Carte
+                      </button>
+
+                      <button
+                        onClick={() => onAddActivityToTrip(item)}
+                        disabled={isAdded}
+                        className={`flex h-8 items-center gap-1 rounded-full px-3 text-[11px] font-semibold ${
+                          isAdded
+                            ? 'bg-emerald-50 text-emerald-800'
+                            : 'bg-ink text-white hover:bg-ink-soft'
+                        }`}
+                      >
+                        {isAdded ? (
+                          <>
+                            <Check className="h-3 w-3" />
+                            <span>Ajouté</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3 w-3" />
+                            <span>Ajouter</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        {filtered.length === 0 && (
+          <div className="mt-4 rounded-[24px] border border-dashed border-line-strong bg-white/70 p-10 text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-paper text-muted">
+              <Search className="h-5 w-5" />
+            </span>
+            <p className="mt-3 text-sm font-semibold text-ink">Aucun résultat</p>
+            <p className="mt-1 text-xs text-muted">
+              Essayez une autre catégorie ou élargissez votre budget.
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('Tous');
+                setMaxBudget(null);
+              }}
+              className="mt-4 rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-ink-soft"
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

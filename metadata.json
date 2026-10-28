@@ -1,0 +1,6 @@
+{
+  "name": "Odyssée - Planificateur de Voyage & Assistant Carte",
+  "description": "Planificateur de voyage tout-en-un avec carte interactive, chatbot géolocalisé avec grounding en temps réel et résolution intelligente des conflits d'horaires.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
