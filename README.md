@@ -49,7 +49,37 @@ src/
   components/   vues et fenêtres (planificateur, budget, explorer, profil…)
   data/         données de démonstration et logique métier (budget, dates, intérêts, règles locales)
   types/        types TypeScript du voyage
+server/
+  chat.ts       logique partagée du concierge IA
+api/
+  chat.ts       fonction serverless Vercel (POST /api/chat)
 ```
+
+## Déploiement Vercel
+
+Le projet est prêt pour Vercel :
+
+- **Framework** : Vite (React 19 + TypeScript), sortie statique dans `dist/`.
+- **API** : `api/chat.ts` est une fonction serverless Node qui remplace la route Express `/api/chat` utilisée en développement. La logique commune vit dans `server/chat.ts`, donc aucun serveur permanent n'est nécessaire.
+- **Configuration** : `vercel.json` définit le build (`npm run build`), le dossier de sortie (`dist`), la durée max de la fonction (30 s) et la réécriture SPA vers `index.html`.
+- **Base de données** : aucune. Le projet n'utilise ni SQLite ni stockage serveur ; les préférences, budgets et dates sont conservés côté navigateur (`localStorage`). Aucune migration Postgres n'est donc requise.
+
+Déploiement :
+
+```bash
+npx vercel --prod
+```
+
+Ou importez le dépôt GitHub dans Vercel (Add New → Project), le preset Vite est détecté automatiquement.
+
+## Variables d'environnement
+
+| Variable | Rôle |
+| --- | --- |
+| `GEMINI_API_KEY` | Clé Google AI Studio / Gemini utilisée par le concierge IA. Optionnelle : sans elle, l'assistant répond avec des recommandations locales de démonstration. |
+
+Variables locales uniquement (non nécessaires sur Vercel) : `PORT` (port du serveur Express de développement, 3000 par défaut) et `DISABLE_HMR` (désactive le HMR de Vite).
+
 
 ## Compte de démonstration
 
