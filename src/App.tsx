@@ -2017,6 +2017,9 @@ export default function App() {
                 interests={user.preferences}
                 onEditDates={() => setIsDateModalOpen(true)}
                 onValidateChoices={handleValidateExploreChoices}
+                position={position ? [position.lat, position.lng] : undefined}
+                positionLabel={position?.label}
+                center={trip.center}
               />
             </div>
 

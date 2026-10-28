@@ -15,10 +15,13 @@ import {
   RefreshCw,
   CheckCircle2,
   ArrowRight,
+  ChevronDown,
+  LocateFixed,
 } from 'lucide-react';
 import { Activity, ActivityCategory } from '../types/travel';
 import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
 import { activityMatchesInterests } from '../data/interests';
+import { formatDistance, haversineKm } from '../data/geo';
 import { SafeImage } from './SafeImage';
 
 interface ExploreViewProps {
@@ -36,6 +39,10 @@ interface ExploreViewProps {
   onEditDates?: () => void;
   /** Valide les filtres et déclenche le recalcul des trajets du séjour. */
   onValidateChoices?: (count: number) => void;
+  /** Position enregistrée (GPS ou manuelle) pour le filtre « Autour de moi ». */
+  position?: [number, number];
+  positionLabel?: string;
+  center?: [number, number];
 }
 
 export const ExploreView: React.FC<ExploreViewProps> = ({
@@ -52,16 +59,29 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   interests = [],
   onEditDates,
   onValidateChoices,
+  position,
+  positionLabel,
+  center,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ActivityCategory | 'Tous'>('Tous');
   const [maxBudget, setMaxBudget] = useState<number | null>(null);
   const [onlyInterests, setOnlyInterests] = useState(false);
   const [validatedCount, setValidatedCount] = useState<number | null>(null);
+  const [isDestinationOpen, setIsDestinationOpen] = useState(false);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
 
   useEffect(() => {
     setValidatedCount(null);
-  }, [selectedCategory, maxBudget, onlyInterests, searchQuery]);
+  }, [selectedCategory, maxBudget, onlyInterests, searchQuery, distanceKm]);
+
+  const referencePoint: [number, number] = position ?? center ?? [41.8902, 12.4922];
+  const referenceLabel = position ? positionLabel ?? 'ma position' : `${destination} centre`;
+
+  const distanceTo = (item: Activity): number | null =>
+    typeof item.lat === 'number' && typeof item.lng === 'number'
+      ? haversineKm(referencePoint, [item.lat, item.lng])
+      : null;
 
   const categories: { label: ActivityCategory | 'Tous'; emoji: string }[] = [
     { label: 'Tous', emoji: '✨' },
@@ -72,19 +92,33 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     { label: 'Vie nocturne', emoji: '🌙' },
   ];
 
+  const search = searchQuery.trim().toLowerCase();
+
   const filtered = POPULAR_RECOMMENDATIONS.filter((item) => {
-    const query = searchQuery.trim().toLowerCase();
     const matchesCategory = selectedCategory === 'Tous' || item.category === selectedCategory;
     const matchesSearch =
-      query.length === 0 ||
-      item.name.toLowerCase().includes(query) ||
-      item.address.toLowerCase().includes(query) ||
-      item.description?.toLowerCase().includes(query);
+      search.length === 0 ||
+      item.name.toLowerCase().includes(search) ||
+      item.address.toLowerCase().includes(search) ||
+      item.description?.toLowerCase().includes(search);
     const matchesBudget = maxBudget === null || item.price <= maxBudget;
     const matchesInterests =
       !onlyInterests || interests.length === 0 || activityMatchesInterests(item, interests);
-    return matchesCategory && matchesSearch && matchesBudget && matchesInterests;
+    const itemDistance = distanceTo(item);
+    const matchesDistance =
+      distanceKm == null || (itemDistance != null && itemDistance <= distanceKm);
+    return matchesCategory && matchesSearch && matchesBudget && matchesInterests && matchesDistance;
   });
+
+  // Toutes les activités disponibles, classées par horaire (menu destination).
+  const destinationOptions = [...POPULAR_RECOMMENDATIONS]
+    .filter(
+      (item) =>
+        search.length === 0 ||
+        item.name.toLowerCase().includes(search) ||
+        item.address.toLowerCase().includes(search)
+    )
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   // Activités classées par horaire, pour visualiser celles qui suivent.
   const chronological = [...filtered].sort((a, b) => a.time.localeCompare(b.time));
@@ -111,10 +145,76 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsDestinationOpen(true);
+              }}
+              onFocus={() => setIsDestinationOpen(true)}
               placeholder="Destination, monument, quartier..."
-              className="w-full rounded-xl border border-line bg-paper py-3 pl-10 pr-4 text-sm font-medium text-ink placeholder:text-muted/80 focus:border-line-strong focus:bg-white focus:outline-none focus:ring-2 focus:ring-ink/5"
+              className="w-full rounded-xl border border-line bg-paper py-3 pl-10 pr-12 text-sm font-medium text-ink placeholder:text-muted/80 focus:border-line-strong focus:bg-white focus:outline-none focus:ring-2 focus:ring-ink/5"
             />
+            <button
+              type="button"
+              onClick={() => setIsDestinationOpen((prev) => !prev)}
+              aria-expanded={isDestinationOpen}
+              aria-label="Afficher toutes les activités disponibles"
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-white hover:text-ink"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${isDestinationOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {isDestinationOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setIsDestinationOpen(false)}
+                  aria-hidden="true"
+                />
+                <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-line bg-white p-1.5 shadow-xl">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                    Toutes les activités · classées par horaire
+                  </p>
+
+                  {destinationOptions.length === 0 && (
+                    <p className="px-2 py-4 text-center text-xs text-muted">
+                      Aucune activité ne correspond à cette recherche.
+                    </p>
+                  )}
+
+                  {destinationOptions.map((item) => {
+                    const itemDistance = distanceTo(item);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery(item.name);
+                          setIsDestinationOpen(false);
+                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-paper"
+                      >
+                        <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
+                          {item.time}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-semibold text-ink">
+                            {item.name}
+                          </span>
+                          <span className="block truncate text-[10px] text-muted">
+                            {item.category}
+                            {itemDistance != null
+                              ? ` · ${formatDistance(itemDistance)} de ${referenceLabel}`
+                              : ''}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           <button
@@ -199,6 +299,46 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           >
             {maxBudget === 20 ? 'Budget ≤ 20 € ✓' : 'Budget ≤ 20 €'}
           </button>
+        </div>
+
+        {/* Filtre de proximité */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-line/60 pt-2.5">
+          <button
+            type="button"
+            onClick={() => setDistanceKm(distanceKm == null ? 3 : null)}
+            aria-pressed={distanceKm != null}
+            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+              distanceKm != null
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                : 'border-line bg-white text-muted hover:border-line-strong hover:text-ink'
+            }`}
+          >
+            <LocateFixed className="h-3.5 w-3.5" />
+            Autour de moi
+          </button>
+
+          {distanceKm != null &&
+            [1, 3, 5, 10, 25].map((km) => (
+              <button
+                key={km}
+                type="button"
+                onClick={() => setDistanceKm(km)}
+                aria-pressed={distanceKm === km}
+                className={`shrink-0 cursor-pointer rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                  distanceKm === km
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-line bg-white text-ink-soft hover:border-line-strong'
+                }`}
+              >
+                {km} km
+              </button>
+            ))}
+
+          <span className="ml-auto text-[10px] text-muted">
+            {distanceKm != null
+              ? `Périmètre ${distanceKm} km · ${referenceLabel}`
+              : `Référence : ${referenceLabel}`}
+          </span>
         </div>
 
         {/* Validation des filtres + recalcul */}
