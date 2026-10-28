@@ -85,7 +85,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
               Votre espace voyage · {todayLabel()}
             </p>
             <h1 className="mt-3 font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-              Bonjour, {firstName}
+              <span className="uppercase">Bonjour</span>, {firstName}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
               Retrouvez votre séjour prévu, ajustez vos dates ou partez à la découverte des
