@@ -68,6 +68,16 @@ type BudgetMode = 'fit' | 'free' | 'all';
 
 const RADIUS_OPTIONS = [1, 3, 5, 10, 25] as const;
 
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hours = Math.floor(index / 2)
+    .toString()
+    .padStart(2, '0');
+  const minutes = index % 2 === 0 ? '00' : '30';
+  return `${hours}:${minutes}`;
+});
+
+const DURATION_OPTIONS = ['30 min', '45 min', '1h', '1h30', '2h', '2h30', '3h', '4h', 'Journée'];
+
 const formatPrice = (price: number): string =>
   price <= 0 ? 'Gratuit' : `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(price)} €`;
 
@@ -884,13 +894,17 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                     <Clock className="h-3 w-3 text-muted" />
                     Heure prévue
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    placeholder="ex: 16:00"
-                    className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm focus:border-ink focus:outline-none"
-                  />
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm font-medium text-ink focus:border-ink focus:outline-none"
+                  >
+                    {TIME_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -908,13 +922,17 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-bold text-ink">Durée estimée</label>
-                  <input
-                    type="text"
+                  <select
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    placeholder="ex: 1h30"
-                    className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm focus:border-ink focus:outline-none"
-                  />
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm font-medium text-ink focus:border-ink focus:outline-none"
+                  >
+                    {DURATION_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
