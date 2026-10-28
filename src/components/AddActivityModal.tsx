@@ -14,6 +14,9 @@ import {
   Compass,
   Wallet,
   AlertTriangle,
+  LocateFixed,
+  Loader2,
+  Pencil,
 } from 'lucide-react';
 import { Activity, ActivityCategory } from '../types/travel';
 import {
@@ -23,6 +26,7 @@ import {
   formatEuros,
 } from '../data/activity-budget';
 import { activityMatchesInterests } from '../data/interests';
+import { formatDistance, haversineKm } from '../data/geo';
 import { SafeImage } from './SafeImage';
 
 interface AddActivityModalProps {
@@ -46,31 +50,20 @@ interface AddActivityModalProps {
   /** Enveloppe totale actuelle, pour l'ajustement direct. */
   budgetTotal?: number;
   /** Applique une nouvelle enveloppe au séjour. */
-  onBudgetChange?: (value: number) => void;
+  onBudgetChange?: (value: number, adaptActivities?: boolean) => void;
   /** Centres d'intérêt du profil, pour le filtre « Mes envies ». */
   interests?: string[];
+  /** « add » ajoute une étape, « replace » remplace l'étape en cours. */
+  mode?: 'add' | 'replace';
+  /** Activité actuellement ciblée par un remplacement. */
+  currentActivityId?: string;
+  /** Demande la position au moment de l'ouverture. */
+  autoLocate?: boolean;
 }
 
 type BudgetMode = 'fit' | 'free' | 'all';
 
 const RADIUS_OPTIONS = [1, 3, 5, 10, 25] as const;
-
-const haversineKm = (from: [number, number], to: [number, number]): number => {
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-  const earthRadius = 6371;
-  const dLat = toRadians(to[0] - from[0]);
-  const dLng = toRadians(to[1] - from[1]);
-  const lat1 = toRadians(from[0]);
-  const lat2 = toRadians(to[0]);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  return 2 * earthRadius * Math.asin(Math.min(1, Math.sqrt(a)));
-};
-
-const formatDistance = (km: number): string =>
-  km < 1 ? `${Math.max(50, Math.round(km * 1000))} m` : `${km.toFixed(1)} km`;
 
 const formatPrice = (price: number): string =>
   price <= 0 ? 'Gratuit' : `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(price)} €`;
@@ -100,6 +93,9 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   budgetTotal,
   onBudgetChange,
   interests = [],
+  mode = 'add',
+  currentActivityId,
+  autoLocate = false,
 }) => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<ActivityCategory>('Culture');
@@ -114,8 +110,41 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   const [preferInterests, setPreferInterests] = useState(interests.length > 0);
   const [isAdjustingBudget, setIsAdjustingBudget] = useState(false);
   const [draftBudget, setDraftBudget] = useState(0);
+  const [pendingBudget, setPendingBudget] = useState<number | null>(null);
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+  const [geoStatus, setGeoStatus] = useState<'idle' | 'locating' | 'ready' | 'error'>('idle');
+  const [geoError, setGeoError] = useState<string | null>(null);
 
-  const referencePoint = anchor ?? center;
+  const locate = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoStatus('error');
+      setGeoError("La géolocalisation n'est pas disponible sur cet appareil.");
+      return;
+    }
+
+    setGeoStatus('locating');
+    setGeoError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserPosition([position.coords.latitude, position.coords.longitude]);
+        setGeoStatus('ready');
+      },
+      (error) => {
+        setGeoStatus('error');
+        setGeoError(
+          error.code === error.PERMISSION_DENIED
+            ? 'Localisation refusée : les idées restent autour de votre dernière étape.'
+            : 'Position indisponible : les idées restent autour de votre dernière étape.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  };
+
+  const referencePoint = userPosition ?? anchor ?? center;
+  const referenceLabel = userPosition ? 'ma position' : anchorLabel ?? `${city} centre`;
+  const isFarFromCity = userPosition ? haversineKm(userPosition, center) > 80 : false;
   const remainingPerPerson = activityBudget?.remainingPerPerson ?? Number.POSITIVE_INFINITY;
 
   // Chaque ouverture repart sur les filtres recommandés.
@@ -126,7 +155,15 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     setBudgetMode('fit');
     setPreferInterests(interests.length > 0);
     setIsAdjustingBudget(false);
+    setPendingBudget(null);
     setDraftBudget(activityBudget?.budgetTotal ?? 0);
+    if (autoLocate) {
+      locate();
+    } else {
+      setUserPosition(null);
+      setGeoStatus('idle');
+      setGeoError(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -179,7 +216,24 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   };
 
   const applyBudget = () => {
-    onBudgetChange?.(Math.max(0, Math.min(100000, Math.round(draftBudget))));
+    const nextBudget = Math.max(0, Math.min(100000, Math.round(draftBudget)));
+    const shrinks = activityBudget ? nextBudget < activityBudget.budgetTotal : false;
+    const hasPaidActivities = (activityBudget?.activitiesTotal ?? 0) > 0;
+
+    // Une baisse d'enveloppe peut retirer des activités : on demande validation.
+    if (shrinks && hasPaidActivities) {
+      setPendingBudget(nextBudget);
+      return;
+    }
+
+    onBudgetChange?.(nextBudget);
+    setIsAdjustingBudget(false);
+  };
+
+  const confirmBudget = (adaptActivities: boolean) => {
+    if (pendingBudget == null) return;
+    onBudgetChange?.(pendingBudget, adaptActivities);
+    setPendingBudget(null);
     setIsAdjustingBudget(false);
   };
 
@@ -260,10 +314,12 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                 Jour {dayNumber} · {city}
               </span>
               <h3 className="font-serif text-xl font-semibold leading-tight text-ink">
-                Ajouter une étape
+                {mode === 'replace' ? 'Modifier une étape' : 'Ajouter une étape'}
               </h3>
               <p className="mt-0.5 text-[11px] text-muted">
-                Choisissez une activité connue à proximité ou créez votre propre étape.
+                {mode === 'replace'
+                  ? 'Choisissez une autre activité connue à proximité ou créez votre propre étape.'
+                  : 'Choisissez une activité connue à proximité ou créez votre propre étape.'}
               </p>
             </div>
           </div>
@@ -293,12 +349,37 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
               <MapPin className="h-3 w-3 text-ink-soft" />
               Autour de{' '}
               <span className="font-semibold text-ink-soft">
-                {anchorLabel ?? `${city} centre`}
+                {referenceLabel}
               </span>
             </p>
 
+            {geoStatus === 'error' && geoError && (
+              <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] text-amber-800">
+                {geoError}
+              </p>
+            )}
+
+            {isFarFromCity && (
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
+                <p className="text-[10px] text-amber-800">
+                  Votre position est éloignée de {city}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserPosition(null);
+                    setGeoStatus('idle');
+                    setGeoError(null);
+                  }}
+                  className="cursor-pointer rounded-full border border-amber-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-amber-800 hover:border-amber-500"
+                >
+                  Autour de {city}
+                </button>
+              </div>
+            )}
+
             {/* Filtre de rayon */}
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               {RADIUS_OPTIONS.map((option) => (
                 <button
                   key={option}
@@ -314,6 +395,37 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                   {option === 25 ? 'Tout' : `${option} km`}
                 </button>
               ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (userPosition) {
+                    setUserPosition(null);
+                    setGeoStatus('idle');
+                    setGeoError(null);
+                  } else {
+                    locate();
+                  }
+                }}
+                aria-pressed={!!userPosition}
+                title="Utiliser ma position actuelle"
+                className={`ml-auto inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  userPosition
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                    : 'border-line bg-white text-ink-soft hover:border-line-strong'
+                }`}
+              >
+                {geoStatus === 'locating' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <LocateFixed className="h-3 w-3" />
+                )}
+                {geoStatus === 'locating'
+                  ? 'Localisation…'
+                  : userPosition
+                    ? 'Ma position'
+                    : 'Me localiser'}
+              </button>
             </div>
 
             {/* Filtre selon les centres d'intérêt du profil */}
@@ -479,44 +591,80 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                       })}
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      <span
-                        className={`text-[10px] font-medium ${
-                          draftRemaining < 0 ? 'text-amber-700' : 'text-emerald-700'
-                        }`}
-                      >
-                        {draftRemaining < 0
-                          ? `Encore dépassé de ${formatEuros(Math.abs(draftRemaining))}`
-                          : `${formatEuros(draftRemaining / budgetTravelers)} / pers. pour les activités`}
-                      </span>
-
-                      <div className="flex items-center gap-1.5">
-                        {onOpenBudget && (
+                    {pendingBudget != null ? (
+                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+                        <p className="flex items-start gap-1.5 text-[10px] leading-relaxed text-amber-900">
+                          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span>
+                            Nouvelle enveloppe : <strong>{formatEuros(pendingBudget)}</strong>. Les
+                            activités qui la dépassent peuvent être retirées du programme.
+                          </span>
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            onClick={onOpenBudget}
-                            className="cursor-pointer rounded-full px-1.5 py-1 text-[10px] font-semibold text-muted underline underline-offset-2 hover:text-ink"
+                            onClick={() => setPendingBudget(null)}
+                            className="cursor-pointer rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
                           >
-                            Détail
+                            Retour
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setIsAdjustingBudget(false)}
-                          className="cursor-pointer rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          type="button"
-                          onClick={applyBudget}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-3 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-ink-soft"
-                        >
-                          <Check className="h-3 w-3" />
-                          Appliquer le budget
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmBudget(false)}
+                            className="cursor-pointer rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+                          >
+                            Garder mon programme
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmBudget(true)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-3 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                          >
+                            <Check className="h-3 w-3" />
+                            Valider et recalculer
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <span
+                          className={`text-[10px] font-medium ${
+                            draftRemaining < 0 ? 'text-amber-700' : 'text-emerald-700'
+                          }`}
+                        >
+                          {draftRemaining < 0
+                            ? `Encore dépassé de ${formatEuros(Math.abs(draftRemaining))}`
+                            : `${formatEuros(draftRemaining / budgetTravelers)} / pers. pour les activités`}
+                        </span>
+
+                        <div className="flex items-center gap-1.5">
+                          {onOpenBudget && (
+                            <button
+                              type="button"
+                              onClick={onOpenBudget}
+                              className="cursor-pointer rounded-full px-1.5 py-1 text-[10px] font-semibold text-muted underline underline-offset-2 hover:text-ink"
+                            >
+                              Détail
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setIsAdjustingBudget(false)}
+                            className="cursor-pointer rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            type="button"
+                            onClick={applyBudget}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-3 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                          >
+                            <Check className="h-3 w-3" />
+                            Appliquer le budget
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -575,7 +723,8 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
               )}
 
               {filteredNearby.map(({ activity, distance }) => {
-                const isAdded = addedActivityIds.includes(activity.id);
+                const isCurrent = mode === 'replace' && activity.id === currentActivityId;
+                const isAdded = addedActivityIds.includes(activity.id) && !isCurrent;
                 const fitsBudget = activityBudget
                   ? fitsActivityBudget(activity, activityBudget)
                   : true;
@@ -586,7 +735,9 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                     className={`flex items-stretch gap-2.5 rounded-xl border p-2 transition-colors ${
                       isAdded
                         ? 'border-emerald-200 bg-emerald-50/60'
-                        : 'border-line bg-white hover:border-line-strong'
+                        : isCurrent
+                          ? 'border-ink/30 bg-paper'
+                          : 'border-line bg-white hover:border-line-strong'
                     }`}
                   >
                     <SafeImage
@@ -632,22 +783,33 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                         <button
                           type="button"
                           onClick={() => onAdd(activity)}
-                          disabled={isAdded}
+                          disabled={isAdded || isCurrent}
                           className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
                             isAdded
                               ? 'cursor-default bg-emerald-100 text-emerald-800'
-                              : 'bg-ink text-white hover:bg-ink-soft'
+                              : isCurrent
+                                ? 'cursor-default bg-paper text-ink-soft ring-1 ring-line'
+                                : 'bg-ink text-white hover:bg-ink-soft'
                           }`}
                         >
-                          {isAdded ? (
+                          {isCurrent ? (
+                            <>
+                              <Check className="h-3 w-3" />
+                              Actuelle
+                            </>
+                          ) : isAdded ? (
                             <>
                               <Check className="h-3 w-3" />
                               Ajoutée
                             </>
                           ) : (
                             <>
-                              <Plus className="h-3 w-3" />
-                              Ajouter
+                              {mode === 'replace' ? (
+                                <Pencil className="h-3 w-3" />
+                              ) : (
+                                <Plus className="h-3 w-3" />
+                              )}
+                              {mode === 'replace' ? 'Remplacer' : 'Ajouter'}
                             </>
                           )}
                         </button>
@@ -757,7 +919,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                 className="mt-1 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-ink py-3 text-sm font-bold text-white transition-colors hover:bg-black"
               >
                 <Plus className="h-4 w-4" />
-                <span>Ajouter à la journée {dayNumber}</span>
+                <span>{mode === 'replace' ? "Remplacer l'étape" : `Ajouter à la journée ${dayNumber}`}</span>
               </button>
             </form>
           </section>

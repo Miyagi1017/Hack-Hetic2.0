@@ -30,6 +30,8 @@ import {
   ChevronDown,
   CalendarDays,
   Pencil,
+  Coins,
+  RefreshCw,
 } from 'lucide-react';
 
 import { Activity, ItineraryStep, Trip, ConflictSolution, DestinationOption, Reservation, PhotoSpotSpotlight, UserProfile } from './types/travel';
@@ -64,10 +66,13 @@ import { BudgetPlanner, BUDGET_MAX } from './components/BudgetPlanner';
 import { DateRangeModal } from './components/DateRangeModal';
 import type { DateUpdatePayload } from './components/DateRangeModal';
 import { AuthScreen } from './components/AuthScreen';
+import { WelcomeView } from './components/WelcomeView';
 import { clearSession, readSession, saveSession, SessionUser } from './data/session';
 import { getCityFestivals, getCityTraditions } from './data/local-traditions';
 import { getCityRestrictions } from './data/local-restrictions';
-import { getActivityBudget } from './data/activity-budget';
+import { getActivityBudget, formatEuros } from './data/activity-budget';
+import { recalculateStepsRoute } from './data/route';
+import { recalculateProgramForBudget } from './data/budget-recalc';
 import {
   applyDatesToTrip,
   clampDaysCount,
@@ -164,7 +169,7 @@ export default function App() {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activeConflictStep, setActiveConflictStep] = useState<ItineraryStep | null>(null);
   const [resolvedBanner, setResolvedBanner] = useState(false);
-  const [activeTab, setActiveTab] = useState<'plan' | 'explore' | 'wishlist' | 'photospots' | 'reservations' | 'restrictions' | 'budget'>('plan');
+  const [activeTab, setActiveTab] = useState<'home' | 'plan' | 'explore' | 'wishlist' | 'photospots' | 'reservations' | 'restrictions' | 'budget'>('home');
   
   // Photo Spot Spotlight Modal state (Google, Instagram, Pinterest, Facebook)
   const [selectedPhotoSpot, setSelectedPhotoSpot] = useState<PhotoSpotSpotlight | null>(null);
@@ -199,6 +204,9 @@ export default function App() {
   // Other Modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isAddStepOpen, setIsAddStepOpen] = useState(false);
+  const [replacingStepIndex, setReplacingStepIndex] = useState<number | null>(null);
+  const [autoLocateNearby, setAutoLocateNearby] = useState(false);
+  const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
 
   // Programme aléatoire, carte en fond et alertes locales
   const [isRandomMenuOpen, setIsRandomMenuOpen] = useState(false);
@@ -331,13 +339,33 @@ export default function App() {
     setSelectedActivity(null);
     setRandomNotice(null);
     setDatesNotice(null);
+    setReplacingStepIndex(null);
+    setActiveTab('plan');
     triggerSuccessBanner();
   };
 
-  // Enveloppe budget : met à jour le séjour et mémorise le choix du voyageur
-  const handleBudgetChange = (nextValue: number) => {
+  // Enveloppe budget : met à jour le séjour et mémorise le choix du voyageur.
+  // `adaptActivities` retire les activités qui ne tiennent plus dans l'enveloppe.
+  const handleBudgetChange = (nextValue: number, adaptActivities = false) => {
     const budget = Math.max(0, Math.min(BUDGET_MAX, Math.round(nextValue / 10) * 10));
-    setTrip((prev) => ({ ...prev, budgetTotal: budget }));
+
+    if (adaptActivities) {
+      const result = recalculateProgramForBudget({ ...trip, budgetTotal: budget });
+      setTrip(result.trip);
+      setBudgetNotice(
+        result.removed > 0
+          ? `Programme recalculé pour ${formatEuros(budget)} : ${result.removed} activité${
+              result.removed > 1 ? 's' : ''
+            } retirée${result.removed > 1 ? 's' : ''}, ${result.kept} conservée${
+              result.kept > 1 ? 's' : ''
+            }.`
+          : `Programme recalculé pour ${formatEuros(budget)} : toutes les activités tiennent dans l'enveloppe.`
+      );
+      triggerSuccessBanner();
+    } else {
+      setTrip((prev) => ({ ...prev, budgetTotal: budget }));
+    }
+
     writeStoredBudget(trip.id, sessionEmail, budget);
   };
 
@@ -606,24 +634,66 @@ export default function App() {
     setTimeout(() => setResolvedBanner(false), 4500);
   };
 
-  // Add an activity to Day's Itinerary
+  // Add an activity to Day's Itinerary (ou remplace l'étape en cours)
   const handleAddActivity = (activity: Activity) => {
+    const targetIndex = replacingStepIndex;
+
     setTrip((prev) => {
       const daySteps = [...(prev.steps[currentDay] || [])];
-      daySteps.push({
-        activity,
-        travel: { mode: 'Marche', duration: '12 min', durationMinutes: 12, cost: 0 },
-      });
+
+      if (targetIndex != null && daySteps[targetIndex]) {
+        daySteps[targetIndex] = { ...daySteps[targetIndex], activity };
+      } else {
+        daySteps.push({
+          activity,
+          travel: { mode: 'Marche', duration: '12 min', durationMinutes: 12, cost: 0 },
+        });
+      }
+
       return {
         ...prev,
         steps: {
           ...prev.steps,
-          [currentDay]: daySteps,
+          [currentDay]: recalculateStepsRoute(daySteps),
         },
       };
     });
+
     setSelectedActivity(activity);
+    setReplacingStepIndex(null);
+    if (activeTab === 'home') setActiveTab('plan');
     triggerSuccessBanner();
+  };
+
+  // Recalcule les temps de trajet d'une journée
+  const handleRecalculateRoute = (day = currentDay) => {
+    setTrip((prev) => ({
+      ...prev,
+      steps: {
+        ...prev.steps,
+        [day]: recalculateStepsRoute(prev.steps[day] || []),
+      },
+    }));
+    triggerSuccessBanner();
+  };
+
+  // Ouvre le sélecteur d'activités autour de la position de l'utilisateur
+  const handleOpenNearby = () => {
+    setReplacingStepIndex(null);
+    setAutoLocateNearby(true);
+    setIsAddStepOpen(true);
+  };
+
+  const handleOpenAddStep = () => {
+    setReplacingStepIndex(null);
+    setAutoLocateNearby(false);
+    setIsAddStepOpen(true);
+  };
+
+  const handleStartReplace = (index: number) => {
+    setAutoLocateNearby(false);
+    setReplacingStepIndex(index);
+    setIsAddStepOpen(true);
   };
 
   // Reorder steps up/down
@@ -641,7 +711,7 @@ export default function App() {
         ...prev,
         steps: {
           ...prev.steps,
-          [currentDay]: daySteps,
+          [currentDay]: recalculateStepsRoute(daySteps),
         },
       };
     });
@@ -734,8 +804,8 @@ export default function App() {
           {/* Logo & Destination Picker Trigger */}
           <div className="flex items-center gap-3 sm:gap-4">
             <button
-              onClick={() => setActiveTab('plan')}
-              aria-label="Revenir au planificateur"
+              onClick={() => setActiveTab('home')}
+              aria-label="Revenir à l'accueil"
               className="w-10 h-10 rounded-[14px] bg-ink flex items-center justify-center text-white shadow-sm ring-1 ring-ink/10 hover:bg-ink-soft"
             >
               <Compass className="w-5 h-5 text-amber-300" />
@@ -786,6 +856,16 @@ export default function App() {
 
           {/* Desktop Navigation Tabs */}
           <nav className="hidden xl:flex items-center gap-1 bg-paper-deep/70 p-1.5 rounded-full border border-line/80 shadow-2xs">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'home'
+                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
+                  : 'text-muted hover:text-ink hover:bg-white/70'
+              }`}
+            >
+              Accueil
+            </button>
             <button
               onClick={() => setActiveTab('plan')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
@@ -1022,6 +1102,28 @@ export default function App() {
           </div>
         )}
 
+        {/* ============ BUDGET RECALC NOTICE ============ */}
+        {budgetNotice && (
+          <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-xs animate-in sm:p-5">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-emerald-700 ring-1 ring-emerald-200">
+                <Coins className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink">Budget validé et programme ajusté</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{budgetNotice}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setBudgetNotice(null)}
+              aria-label="Masquer la notification de budget"
+              className="rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* ============ DATES UPDATED NOTICE ============ */}
         {datesNotice && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-xs animate-in sm:p-5">
@@ -1051,6 +1153,19 @@ export default function App() {
               <X className="h-4 w-4" />
             </button>
           </div>
+        )}
+
+        {/* ============ ACCUEIL ============ */}
+        {activeTab === 'home' && (
+          <WelcomeView
+            user={user}
+            trip={trip}
+            activitiesCount={Object.values(trip.steps).flat().length}
+            onOpenPlanner={() => setActiveTab('plan')}
+            onOpenNearby={handleOpenNearby}
+            onOpenDates={() => setIsDateModalOpen(true)}
+            onSelectDestination={handleSelectDestination}
+          />
         )}
 
         {/* ============ VUE 3: PLANIFICATEUR (carte en tête, puis timeline + contexte) ============ */}
@@ -1201,6 +1316,15 @@ export default function App() {
                   >
                     {hasConflict ? <AlertTriangle className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
                     <span>{hasConflict ? 'Résoudre' : 'Optimiser'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleRecalculateRoute()}
+                    title="Recalculer les temps de trajet du jour"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2.5 text-xs font-semibold text-ink shadow-2xs transition-colors hover:border-line-strong hover:bg-paper"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 text-accent" />
+                    <span>Recalculer</span>
                   </button>
 
                   {/* Programme aléatoire */}
@@ -1385,6 +1509,7 @@ export default function App() {
                       onUpdateRating={handleUpdateRating}
                       onMoveUp={idx > 0 ? () => handleMoveStep(idx, 'up') : undefined}
                       onMoveDown={idx < currentSteps.length - 1 ? () => handleMoveStep(idx, 'down') : undefined}
+                      onReplace={() => handleStartReplace(idx)}
                     />
                   ))}
 
@@ -1402,7 +1527,7 @@ export default function App() {
                 </div>
 
                 <button
-                  onClick={() => setIsAddStepOpen(true)}
+                  onClick={handleOpenAddStep}
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong bg-white/60 py-3.5 text-xs font-semibold text-ink-soft hover:border-ink hover:bg-white"
                 >
                   <Plus className="h-4 w-4" />
@@ -1415,7 +1540,7 @@ export default function App() {
                   trip={trip}
                   currentDay={currentDay}
                   onOptimizeTrip={handleOptimizeTrip}
-                  onAddStep={() => setIsAddStepOpen(true)}
+                  onAddStep={handleOpenAddStep}
                   onOpenChat={() => setIsChatOpen(true)}
                   onOpenRestrictions={() => setActiveTab('restrictions')}
                   onBudgetChange={handleBudgetChange}
@@ -1530,7 +1655,7 @@ export default function App() {
               onEditDates={() => setIsDateModalOpen(true)}
               onPickBudgetActivity={() => {
                 setActiveTab('plan');
-                setIsAddStepOpen(true);
+                handleOpenAddStep();
               }}
               userName={user.name}
               profileStyle={user.travelStyle}
@@ -1639,7 +1764,11 @@ export default function App() {
       {/* ============ MODAL AJOUT D'ÉTAPE ============ */}
       <AddActivityModal
         isOpen={isAddStepOpen}
-        onClose={() => setIsAddStepOpen(false)}
+        onClose={() => {
+          setIsAddStepOpen(false);
+          setReplacingStepIndex(null);
+          setAutoLocateNearby(false);
+        }}
         onAdd={handleAddActivity}
         dayNumber={currentDay}
         center={trip.center}
@@ -1652,8 +1781,16 @@ export default function App() {
         budgetTotal={trip.budgetTotal}
         onBudgetChange={handleBudgetChange}
         interests={user.preferences}
+        mode={replacingStepIndex != null ? 'replace' : 'add'}
+        currentActivityId={
+          replacingStepIndex != null
+            ? currentSteps[replacingStepIndex]?.activity.id
+            : undefined
+        }
+        autoLocate={autoLocateNearby}
         onOpenBudget={() => {
           setIsAddStepOpen(false);
+          setReplacingStepIndex(null);
           setActiveTab('budget');
         }}
       />

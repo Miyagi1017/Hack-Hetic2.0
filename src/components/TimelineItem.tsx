@@ -19,6 +19,7 @@ import {
   ExternalLink,
   ChevronDown,
   Leaf,
+  Pencil,
 } from 'lucide-react';
 import { ItineraryStep, Activity, PhotoSpotSpotlight } from '../types/travel';
 import { CURATED_PHOTO_SPOTS } from '../data/mock-data';
@@ -38,6 +39,7 @@ interface TimelineItemProps {
   onUpdateRating?: (stepIndex: number, rating: number) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onReplace?: () => void;
 }
 
 export const TimelineItem: React.FC<TimelineItemProps> = ({
@@ -53,6 +55,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   onOpenPhotoSpot,
   onMoveUp,
   onMoveDown,
+  onReplace,
 }) => {
   const act = step.activity;
   const isConflict = !!step.conflict;
@@ -155,6 +158,22 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
                         isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-line-strong hover:text-rose-500'
                       }`}
                     />
+                  </button>
+                )}
+
+                {/* Modifier l'activité choisie */}
+                {onReplace && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReplace();
+                    }}
+                    title="Modifier cette activité"
+                    aria-label="Modifier cette activité"
+                    className="rounded-full p-1.5 text-line-strong transition-colors hover:bg-paper hover:text-ink"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
                   </button>
                 )}
 
