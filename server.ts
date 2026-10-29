@@ -6,8 +6,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { generateChatReply } from "./api/chat.js";
-import authRouter from "./api/v1/auth.js";
-import tripsRouter from "./api/v1/trips.js";
+import authRouter from "./src/server/routes/auth.js";
+import tripsRouter from "./src/server/routes/trips.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
