@@ -1,10 +1,13 @@
 import "dotenv/config";
 import express from "express";
+import cookieParser from "cookie-parser";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
-import { generateChatReply } from "./api/chat";
+import { generateChatReply } from "./api/chat.js";
+import authRouter from "./api/v1/auth.js";
+import tripsRouter from "./api/v1/trips.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +16,10 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "10mb" }));
+app.use(cookieParser());
+
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/trips", tripsRouter);
 
 // Concierge IA : même logique que la fonction serverless Vercel (api/chat.ts).
 app.post("/api/chat", async (req, res) => {
