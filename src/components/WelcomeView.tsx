@@ -206,7 +206,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
                 icon={<span className="text-[10px] text-white/70">Photo</span>}
               />
               <span
-                className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent"
+                className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/60 to-ink/10"
                 aria-hidden="true"
               />
               <span className="absolute inset-x-0 bottom-0 p-3">
