@@ -2,16 +2,11 @@ import React, { useState } from 'react';
 import { SafeImage } from './SafeImage';
 import { 
   Heart, 
-  Trash2, 
   Plus, 
   MapPin, 
   Clock, 
   Star, 
-  ExternalLink, 
-  Compass, 
-  Calendar, 
-  Sparkles,
-  Ticket
+  ExternalLink
 } from 'lucide-react';
 import { Activity, ActivityCategory } from '../types/travel';
 
@@ -45,14 +40,13 @@ export const WishlistView: React.FC<WishlistViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6">
+      <div className="rounded-2xl border border-line bg-white p-5 sm:p-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-              <Heart className="h-3.5 w-3.5 fill-accent/20 text-accent" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
               Carnet d'envies
-            </span>
-            <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            </p>
+            <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
               Vos coups de cœur <span className="text-muted">({wishlist.length})</span>
             </h2>
             <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">

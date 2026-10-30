@@ -2,17 +2,11 @@ import React, { useState } from 'react';
 import { 
   Ticket, 
   QrCode, 
-  Download, 
   CheckCircle2, 
-  ExternalLink, 
-  Calendar, 
   Users, 
   Clock, 
   MapPin, 
-  TrendingDown, 
   Camera,
-  Sparkles,
-  ArrowRight,
   X
 } from 'lucide-react';
 import { Reservation, Activity } from '../types/travel';
@@ -46,17 +40,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col items-start justify-between gap-4 rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6 md:flex-row md:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line bg-white p-5 sm:p-6 md:flex-row md:items-center">
         <div>
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-            <Ticket className="h-3.5 w-3.5" />
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
             Pass & billetterie
-          </span>
-          <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-            Vos réservations & billets coupe-file
+          </p>
+          <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            Vos réservations & billets
           </h2>
           <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">
-            Tous vos pass numériques et vouchers sécurisés, accessibles hors-ligne et prêts à scanner.
+            Vos billets et vouchers, accessibles hors-ligne et prêts à scanner.
           </p>
         </div>
 

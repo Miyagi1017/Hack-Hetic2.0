@@ -1,32 +1,8 @@
 import React, { useState } from 'react';
-import {
-  MapPin,
-  Clock,
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  ArrowRight,
-  Footprints,
-  Train,
-  Car,
-  Bike,
-  Bus,
-  Camera,
-  ShieldCheck,
-  Users,
-  Sun,
-  Star,
-  Heart,
-  ExternalLink,
-  ChevronDown,
-  Leaf,
-  Pencil,
-  X,
-  Check,
-} from 'lucide-react';
 import { ItineraryStep, Activity, PhotoSpotSpotlight } from '../types/travel';
 import { CURATED_PHOTO_SPOTS } from '../data/mock-data';
 import { formatDistance, haversineKm } from '../data/geo';
+import { dayPartCssVars, getDayPart } from '../data/day-parts';
 import { SafeImage } from './SafeImage';
 import { TimeField } from './TimeField';
 
@@ -38,7 +14,8 @@ const TIME_PRESETS = [
   { label: 'Soirée', time: '21:30' },
 ];
 
-interface TimelineItemProps {  step: ItineraryStep;
+interface TimelineItemProps {
+  step: ItineraryStep;
   index: number;
   totalSteps: number;
   isSelected: boolean;
@@ -57,6 +34,11 @@ interface TimelineItemProps {  step: ItineraryStep;
   nextStep?: ItineraryStep;
 }
 
+/**
+ * Carte d'étape minimaliste : une heure, un lieu, une action.
+ * La couleur du filet indique le moment de la journée ; la gastronomie
+ * reçoit une carte « table » sombre, immédiatement reconnaissable.
+ */
 export const TimelineItem: React.FC<TimelineItemProps> = ({
   step,
   index,
@@ -78,12 +60,15 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   const isConflict = !!step.conflict;
   const scenic = step.scenicPassage;
 
+  const part = getDayPart(act.time);
+  const isDining = act.category === 'Gastronomie';
+  const stepVars = dayPartCssVars(part);
+  const nextPart = nextStep ? getDayPart(nextStep.activity.time) : null;
+
   const [isScenicExpanded, setIsScenicExpanded] = useState(false);
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [draftTime, setDraftTime] = useState(act.time);
 
-  // Match photo spot from curated database (aucun repli arbitraire : on n'affiche
-  // la bannière que lorsqu'un spot correspond réellement à l'étape)
   const matchingSpot = CURATED_PHOTO_SPOTS.find(
     (s) =>
       s.locationName.toLowerCase().includes(act.name.toLowerCase().split(' ')[0]) ||
@@ -93,25 +78,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
           scenic.name.toLowerCase().includes(s.name.toLowerCase().split(' ')[0])))
   );
 
-  const getTransportIcon = (mode?: string) => {
-    switch (mode) {
-      case 'Marche':
-        return <Footprints className="w-3.5 h-3.5" />;
-      case 'Métro':
-        return <Train className="w-3.5 h-3.5" />;
-      case 'Uber':
-      case 'Voiture':
-        return <Car className="w-3.5 h-3.5" />;
-      case 'Vélo':
-        return <Bike className="w-3.5 h-3.5" />;
-      case 'Bus':
-        return <Bus className="w-3.5 h-3.5" />;
-      default:
-        return <Footprints className="w-3.5 h-3.5" />;
-    }
-  };
-
-  // Vue du trajet entre cette étape et la suivante
+  // Trajet vers l'étape suivante
   const leg = nextStep?.travel;
   const legDistance =
     leg &&
@@ -150,284 +117,272 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
 
   return (
     <div className="group relative">
-      {/* Carte d'activité */}
       <article
         onClick={onSelect}
-        className={`relative cursor-pointer rounded-[24px] border bg-white p-4 transition-all duration-300 sm:p-5 ${
-          isConflict
-            ? 'border-amber-300 shadow-sm ring-1 ring-amber-100 hover:shadow-md'
+        style={{
+          ...stepVars,
+          ...(isConflict
+            ? { borderColor: '#fbbf24' }
             : isSelected
-            ? 'border-ink/25 shadow-md ring-2 ring-ink/10'
-            : 'border-line hover:border-line-strong hover:shadow-sm'
-        }`}
+              ? { borderColor: 'rgba(29, 27, 22, 0.34)' }
+              : {}),
+        }}
+        className={`step-card relative cursor-pointer overflow-hidden rounded-[20px] border p-4 pl-5 transition-colors sm:p-5 sm:pl-6 ${
+          isDining ? 'is-dining' : ''
+        } ${isSelected ? 'ring-2 ring-ink/10' : ''}`}
       >
-        <div className="flex items-start gap-3.5 sm:gap-4">
-          {/* Visuel + numéro d'étape */}
-          <div className="relative shrink-0">
-            <SafeImage
-              src={act.image}
-              alt={act.name}
-              className="h-[72px] w-[72px] rounded-[18px] border border-line object-cover sm:h-20 sm:w-20"
-              icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
-            />
-            <span className="absolute -left-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-[10px] font-bold text-ink shadow-xs">
-              {index + 1}
+        <span aria-hidden="true" className="step-rail absolute inset-y-4 left-0 w-[3px] rounded-r-full" />
+
+        {isDining && (
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#e8c98d]">
+              À table
+            </span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#e8c98d]/80">
+              {part.label}
             </span>
           </div>
+        )}
 
-          {/* Détails */}
+        <div className="flex items-start gap-3.5 sm:gap-4">
+          <SafeImage
+            src={act.image}
+            alt={act.name}
+            className="h-16 w-16 shrink-0 rounded-xl border border-line/70 object-cover sm:h-[72px] sm:w-[72px]"
+            icon={<span className="text-[10px] text-muted">Photo</span>}
+          />
+
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {onUpdateTime ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDraftTime(act.time);
-                      setIsEditingTime((prev) => !prev);
-                    }}
-                    title="Modifier l'horaire"
-                    aria-label={`Modifier l'horaire de ${act.name}`}
-                    aria-expanded={isEditingTime}
-                    className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-                      isConflict
-                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                        : 'bg-accent-soft text-accent hover:bg-accent/15'
-                    }`}
-                  >
-                    {act.time}
-                    <Pencil className="h-2.5 w-2.5 opacity-60" />
-                  </button>
-                ) : (
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                      isConflict ? 'bg-amber-100 text-amber-800' : 'bg-accent-soft text-accent'
-                    }`}
-                  >
-                    {act.time}
-                  </span>
-                )}
-                <span className="rounded-full bg-paper px-2 py-0.5 text-[10px] font-medium text-muted">
-                  {act.category}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {onUpdateTime ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraftTime(act.time);
+                    setIsEditingTime((prev) => !prev);
+                  }}
+                  title="Modifier l'horaire"
+                  aria-label={`Modifier l'horaire de ${act.name}`}
+                  aria-expanded={isEditingTime}
+                  style={isConflict ? { background: '#fef3c7', color: '#92400e' } : undefined}
+                  className="step-time cursor-pointer rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums transition-opacity hover:opacity-80"
+                >
+                  {act.time}
+                </button>
+              ) : (
+                <span
+                  style={isConflict ? { background: '#fef3c7', color: '#92400e' } : undefined}
+                  className="step-time rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums"
+                >
+                  {act.time}
                 </span>
-                {isConflict && (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                    <AlertTriangle className="h-2.5 w-2.5" />
-                    Conflit
-                  </span>
-                )}
-              </div>
+              )}
 
-              <div className="flex shrink-0 items-center gap-0.5">
-                {onToggleWishlist && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleWishlist(act);
-                    }}
-                    title={isWishlisted ? "Retirer de ma liste d'envies" : "Ajouter à ma liste d'envies"}
-                    aria-label={isWishlisted ? "Retirer de ma liste d'envies" : "Ajouter à ma liste d'envies"}
-                    className="rounded-full p-1.5 hover:bg-paper"
-                  >
-                    <Heart
-                      className={`h-4 w-4 ${
-                        isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-line-strong hover:text-rose-500'
-                      }`}
-                    />
-                  </button>
-                )}
+              <span className="step-category rounded-full px-2 py-0.5 text-[10px]">
+                {act.category}
+              </span>
 
-                {/* Modifier l'activité choisie */}
-                {onReplace && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onReplace();
-                    }}
-                    title="Modifier cette activité"
-                    aria-label="Modifier cette activité"
-                    className="rounded-full p-1.5 text-line-strong transition-colors hover:bg-paper hover:text-ink"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                )}
-
-                {/* Réorganisation */}
-                <div className="hidden flex-col sm:flex">
-                  {onMoveUp && index > 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onMoveUp();
-                      }}
-                      title="Monter l'étape"
-                      aria-label="Monter l'étape"
-                      className="rounded p-0.5 text-line-strong opacity-0 hover:bg-paper hover:text-ink group-hover:opacity-100"
-                    >
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {onMoveDown && index < totalSteps - 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onMoveDown();
-                      }}
-                      title="Descendre l'étape"
-                      aria-label="Descendre l'étape"
-                      className="rounded p-0.5 text-line-strong opacity-0 hover:bg-paper hover:text-ink group-hover:opacity-100"
-                    >
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
+              {isConflict && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenConflict();
+                  }}
+                  className="cursor-pointer rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-200"
+                >
+                  Conflit · résoudre
+                </button>
+              )}
             </div>
 
-            {isEditingTime && onUpdateTime && (
-              <div className="mt-2 rounded-xl border border-line bg-paper p-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                    Nouvel horaire
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditingTime(false);
-                    }}
-                    aria-label="Fermer la modification d'horaire"
-                    className="cursor-pointer rounded-full p-0.5 text-muted transition-colors hover:bg-white hover:text-ink"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <span className="contents" onClick={(e) => e.stopPropagation()}>
-                    <TimeField
-                      value={draftTime}
-                      onChange={setDraftTime}
-                      ariaLabel="Choisir l'horaire de l'activité"
-                      compact
-                    />
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!draftTime) return;
-                      onUpdateTime(draftTime);
-                      setIsEditingTime(false);
-                    }}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-2.5 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-ink-soft"
-                  >
-                    <Check className="h-3 w-3" />
-                    Valider
-                  </button>
-                </div>
-
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {TIME_PRESETS.map((preset) => (
-                    <button
-                      key={preset.time}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDraftTime(preset.time);
-                      }}
-                      aria-pressed={draftTime === preset.time}
-                      className={`cursor-pointer rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                        draftTime === preset.time
-                          ? 'border-ink bg-ink text-white'
-                          : 'border-line bg-white text-ink-soft hover:border-line-strong'
-                      }`}
-                    >
-                      {preset.label} · {preset.time}
-                    </button>
-                  ))}
-                </div>
-
-                <p className="mt-1 text-[10px] leading-relaxed text-muted">
-                  Les étapes sont replacées dans l'ordre chronologique et le trajet est recalculé.
-                </p>
-              </div>
-            )}
-
-            <h3 className="mt-2 line-clamp-2 font-serif text-[17px] font-semibold leading-snug text-ink sm:text-lg">
+            <h3
+              className={`step-title mt-1.5 line-clamp-2 font-serif font-semibold leading-snug ${
+                isDining ? 'text-lg tracking-tight sm:text-xl' : 'text-[17px] sm:text-lg'
+              }`}
+            >
               {act.name}
             </h3>
 
-            <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted">
-              <MapPin className="h-3 w-3 shrink-0" />
-              <span className="truncate">{act.address}</span>
-            </p>
+            {isDining && <div className="step-menu-rule mt-2 w-16" aria-hidden="true" />}
 
-            {/* Actions */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line/80 pt-2.5">
-              <div className="flex items-center gap-2 text-[11px] text-muted">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {act.duration}
-                </span>
-                <span className="text-line-strong">·</span>
-                <span className="font-semibold text-ink">
-                  {act.price > 0 ? `${act.price} €` : 'Gratuit'}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={
-                    act.googleMapsUrl ||
-                    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.name + ' ' + act.address)}`
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="Ouvrir dans Google Maps"
-                  title="Ouvrir dans Google Maps"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:border-line-strong hover:bg-paper"
-                >
-                  <MapPin className="h-3.5 w-3.5" />
-                </a>
-
-                {isConflict && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenConflict();
-                    }}
-                    className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-600"
-                  >
-                    Résoudre
-                  </button>
-                )}
-
-                {onOpenComparator && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenComparator(act);
-                    }}
-                    className="rounded-full bg-ink px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-ink-soft"
-                  >
-                    {act.price > 0 ? `Réserver · ${act.price} €` : 'Comparer les offres'}
-                  </button>
-                )}
-              </div>
-            </div>
+            <p className="step-muted mt-1 truncate text-[11px]">{act.address}</p>
           </div>
         </div>
 
-        {/* Spots photo & avis */}
+        {isEditingTime && onUpdateTime && (
+          <div className="mt-3 rounded-xl border border-line bg-white/70 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                Nouvel horaire
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingTime(false);
+                }}
+                className="cursor-pointer text-[11px] text-muted hover:text-ink"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="contents" onClick={(e) => e.stopPropagation()}>
+                <TimeField
+                  value={draftTime}
+                  onChange={setDraftTime}
+                  ariaLabel="Choisir l'horaire de l'activité"
+                  compact
+                />
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!draftTime) return;
+                  onUpdateTime(draftTime);
+                  setIsEditingTime(false);
+                }}
+                className="cursor-pointer rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white hover:bg-ink-soft"
+              >
+                Valider
+              </button>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-1">
+              {TIME_PRESETS.map((preset) => (
+                <button
+                  key={preset.time}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraftTime(preset.time);
+                  }}
+                  aria-pressed={draftTime === preset.time}
+                  className={`cursor-pointer rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                    draftTime === preset.time
+                      ? 'border-ink bg-ink text-white'
+                      : 'border-line bg-white text-ink-soft hover:border-line-strong'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-1.5 text-[10px] leading-relaxed text-muted">
+              Les étapes se replacent dans l'ordre et les trajets sont recalculés.
+            </p>
+          </div>
+        )}
+
+        {/* Ligne d'actions : texte seul, une action par intention */}
+        <div className="step-hairline mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t pt-2.5">
+          <p className="step-muted text-[11px]">
+            {act.duration}
+            <span className="mx-1.5 opacity-40">·</span>
+            <span
+              className="font-semibold"
+              style={{ color: isDining ? '#e8c98d' : 'var(--step-ink)' }}
+            >
+              {act.price > 0 ? `${act.price} €` : 'Gratuit'}
+            </span>
+          </p>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium">
+            <a
+              href={
+                act.googleMapsUrl ||
+                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.name + ' ' + act.address)}`
+              }
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="step-muted transition-colors hover:text-ink"
+            >
+              Carte ↗
+            </a>
+
+            {onReplace && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReplace();
+                }}
+                className="step-muted cursor-pointer transition-colors hover:text-ink"
+              >
+                Modifier
+              </button>
+            )}
+
+            {onToggleWishlist && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleWishlist(act);
+                }}
+                aria-pressed={isWishlisted}
+                className={`cursor-pointer transition-colors ${
+                  isWishlisted ? 'font-semibold text-rose-600' : 'step-muted hover:text-ink'
+                }`}
+              >
+                {isWishlisted ? 'Gardé' : 'Garder'}
+              </button>
+            )}
+
+            {(onMoveUp || onMoveDown) && (
+              <span className="flex items-center gap-2 text-muted">
+                {onMoveUp && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveUp();
+                    }}
+                    title="Monter l'étape"
+                    aria-label="Monter l'étape"
+                    className="cursor-pointer px-0.5 hover:text-ink"
+                  >
+                    ↑
+                  </button>
+                )}
+                {onMoveDown && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveDown();
+                    }}
+                    title="Descendre l'étape"
+                    aria-label="Descendre l'étape"
+                    className="cursor-pointer px-0.5 hover:text-ink"
+                  >
+                    ↓
+                  </button>
+                )}
+              </span>
+            )}
+
+            {onOpenComparator && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenComparator(act);
+                }}
+                className="step-cta rounded-full px-3 py-1 text-[11px] font-semibold transition-colors"
+              >
+                {act.price > 0 ? `Réserver · ${act.price} €` : 'Comparer'}
+              </button>
+            )}
+          </div>
+        </div>
+
         {matchingSpot && onOpenPhotoSpot && (
           <button
             type="button"
@@ -435,157 +390,126 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
               e.stopPropagation();
               onOpenPhotoSpot(matchingSpot);
             }}
-            className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-2 text-left hover:bg-rose-50"
+            className={`mt-2.5 flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[11px] transition-colors ${
+              isDining
+                ? 'border-white/12 text-white/70 hover:bg-white/5'
+                : 'border-line text-muted hover:bg-paper'
+            }`}
           >
-            <span className="flex min-w-0 items-center gap-2 text-[11px] font-medium text-rose-950">
-              <Camera className="h-3.5 w-3.5 shrink-0 text-rose-500" />
-              <span className="truncate">Photos, avis & meilleur angle</span>
-            </span>
-            <span className="shrink-0 rounded-full border border-rose-200 bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-              {matchingSpot.reviews.length} avis
-            </span>
+            <span className="truncate">Photos, avis & meilleur angle</span>
+            <span className="shrink-0 font-semibold">{matchingSpot.reviews.length} avis</span>
           </button>
         )}
       </article>
 
-      {/* ============ LIAISON TRANSPORT & PASSAGE PAYSAGER ============ */}
+      {/* ============ LIAISON : point coloré vers le prochain arrêt ============ */}
       {index < totalSteps - 1 && (
         <div className="px-4 py-2 sm:px-5">
           {leg && nextStep && (
-            <div className="flex items-stretch gap-2.5">
-              {/* Ligne verticale + icône du mode de transport */}
-              <div className="flex w-[72px] shrink-0 flex-col items-center sm:w-20">
-                <div className="h-2 w-px bg-line" />
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-white text-ink shadow-2xs">
-                  {getTransportIcon(leg.mode)}
+            <div className="flex items-center gap-2">
+              <div className="flex w-[64px] shrink-0 items-center justify-center sm:w-[72px]">
+                <span className="h-5 w-px bg-line" />
+                <span
+                  className="flex h-3 w-3 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: nextPart?.accentSoft ?? 'rgba(29,27,22,0.12)' }}
+                  aria-hidden="true"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: nextPart?.accent ?? '#1d1b16' }}
+                  />
                 </span>
-                <div className="w-px flex-1 bg-line" />
+                <span className="h-5 w-px bg-line" />
               </div>
 
-              {/* Détail du trajet */}
-              <div className="min-w-0 flex-1 rounded-2xl border border-line bg-paper/70 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]">
-                  <span className="font-semibold text-ink">{leg.mode}</span>
-                  <span className="text-line-strong">·</span>
-                  <span className="text-muted">{leg.duration}</span>
-                  {legDistance && (
-                    <>
-                      <span className="text-line-strong">·</span>
-                      <span className="text-muted">{legDistance}</span>
-                    </>
-                  )}
-                  {leg.cost > 0 && (
-                    <>
-                      <span className="text-line-strong">·</span>
-                      <span className="font-semibold text-emerald-700">
-                        {leg.cost.toFixed(2)} €
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
-                  <span className="truncate">{act.name}</span>
-                  <ArrowRight className="h-3 w-3 shrink-0 text-line-strong" />
-                  <span className="truncate">{nextStep.activity.name}</span>
-                </p>
-
-                {directionsUrl && (
-                  <a
-                    href={directionsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                    className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-accent hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Voir l'itinéraire sur Google Maps
-                  </a>
+              <a
+                href={directionsUrl ?? '#'}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                title={`${act.name} → ${nextStep.activity.name} · ${nextPart?.label ?? ''}`}
+                aria-label={`Trajet de ${act.name} vers ${nextStep.activity.name} : ${leg.mode}, ${leg.duration}. Ouvrir l'itinéraire`}
+                style={nextPart ? { borderColor: nextPart.border } : undefined}
+                className="flex min-w-0 items-center gap-1.5 rounded-full border bg-white px-2.5 py-1 text-[11px] text-ink transition-colors hover:bg-paper"
+              >
+                <span className="shrink-0 font-semibold">{leg.mode}</span>
+                <span className="opacity-30">·</span>
+                <span className="shrink-0 text-muted">{leg.duration}</span>
+                {legDistance && (
+                  <>
+                    <span className="opacity-30">·</span>
+                    <span className="shrink-0 text-muted">{legDistance}</span>
+                  </>
                 )}
-              </div>
+                {leg.cost > 0 && (
+                  <>
+                    <span className="opacity-30">·</span>
+                    <span className="shrink-0 font-semibold text-emerald-700">
+                      {leg.cost.toFixed(2)} €
+                    </span>
+                  </>
+                )}
+                <span className="ml-0.5 shrink-0 text-accent">↗</span>
+              </a>
             </div>
           )}
 
           {/* Passage par parc, jardin ou monument paysager */}
           {scenic && (
-            <div className="mt-1 rounded-2xl border border-emerald-200/70 bg-emerald-50/50 p-3.5 transition-colors hover:bg-emerald-50/80">
+            <div className="mt-1 rounded-xl border border-line bg-white/70 p-3">
               <div className="flex items-start gap-3">
                 <SafeImage
                   src={scenic.photoUrl}
                   alt={scenic.name}
                   onClick={() => setIsScenicExpanded(!isScenicExpanded)}
-                  className="h-16 w-16 shrink-0 cursor-pointer rounded-xl border border-emerald-200 object-cover transition-transform hover:scale-105"
-                  icon={<Leaf className="h-5 w-5 text-emerald-700/40" aria-hidden="true" />}
+                  className="h-14 w-14 shrink-0 cursor-pointer rounded-lg border border-line object-cover"
+                  icon={<span className="text-[9px] text-muted">Parc</span>}
                 />
 
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                    <span className="flex items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      <Leaf className="h-2.5 w-2.5" />
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted">
+                    <span className="font-semibold uppercase tracking-wider text-emerald-800">
                       Passage paysager
                     </span>
-
-                    <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                      <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                      {scenic.safetyRating} ({scenic.safetyScore}%)
+                    <span>{scenic.safetyRating} · {scenic.safetyScore}%</span>
+                    <span>{scenic.crowdLevel}</span>
+                    <span className="font-semibold text-ink">
+                      {scenic.rating} ({scenic.verifiedReviewsCount} avis)
                     </span>
+                  </p>
 
-                    <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-medium text-ink-soft">
-                      <Users className="h-3 w-3 text-blue-600" />
-                      {scenic.crowdLevel}
-                    </span>
-
-                    <span className="ml-auto flex items-center gap-0.5 text-[10px] text-muted">
-                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                      <span className="font-semibold text-ink">{scenic.rating}</span>
-                      <span>({scenic.verifiedReviewsCount})</span>
-                    </span>
-                  </div>
-
-                  <h5 className="font-serif text-sm font-semibold leading-snug text-ink">{scenic.name}</h5>
-
+                  <h5 className="mt-0.5 font-serif text-sm font-semibold leading-snug text-ink">
+                    {scenic.name}
+                  </h5>
                   <p className="mt-0.5 line-clamp-1 text-[11px] text-muted">{scenic.description}</p>
 
-                  <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
                     <button
                       type="button"
                       onClick={() => setIsScenicExpanded(!isScenicExpanded)}
-                      className="flex items-center gap-1 font-semibold text-emerald-900 hover:text-emerald-700"
+                      aria-expanded={isScenicExpanded}
+                      className="cursor-pointer font-semibold text-ink hover:text-accent"
                     >
-                      <Camera className="h-3.5 w-3.5 text-emerald-700" />
-                      <span>Spot photo & cadrage</span>
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 transition-transform ${isScenicExpanded ? 'rotate-180' : ''}`}
-                      />
+                      Photos & cadrage {isScenicExpanded ? '−' : '+'}
                     </button>
-
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(scenic.name)}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-0.5 font-semibold text-ink-soft hover:text-accent"
+                      className="text-muted hover:text-accent"
                     >
-                      <span>Google Maps</span>
-                      <ExternalLink className="h-2.5 w-2.5" />
+                      Carte ↗
                     </a>
                   </div>
 
                   {isScenicExpanded && (
-                    <div className="animate-in mt-3 space-y-1.5 rounded-xl border border-emerald-200/70 bg-white p-3 text-xs">
-                      <p className="flex items-center gap-1.5 font-semibold text-ink">
-                        <Camera className="h-3.5 w-3.5 text-emerald-700" />
-                        <span>{scenic.instagrammableSpot}</span>
-                      </p>
-                      <p className="leading-relaxed text-muted">
-                        <strong className="font-semibold text-ink-soft">Conseil :</strong> {scenic.photoTips}
-                      </p>
-                      <p className="flex items-center gap-1 font-medium text-amber-800">
-                        <Sun className="h-3 w-3 text-amber-500" />
-                        <span>Golden hour : {scenic.goldenHour}</span>
-                      </p>
+                    <div className="mt-2 space-y-1 rounded-lg border border-line bg-paper p-2.5 text-[11px]">
+                      <p className="font-semibold text-ink">{scenic.instagrammableSpot}</p>
+                      <p className="leading-relaxed text-muted">{scenic.photoTips}</p>
+                      <p className="text-amber-800">Golden hour · {scenic.goldenHour}</p>
 
                       {onOpenPhotoSpot && matchingSpot && (
-                        <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+                        <div className="flex items-center justify-between gap-2 border-t border-line pt-1.5">
                           <span className="text-[10px] text-muted">Avis multi-plateformes</span>
                           <button
                             type="button"
@@ -593,7 +517,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
                               e.stopPropagation();
                               onOpenPhotoSpot(matchingSpot);
                             }}
-                            className="rounded-lg bg-ink px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-ink-soft"
+                            className="cursor-pointer rounded-full border border-line bg-white px-2.5 py-0.5 text-[10px] font-semibold text-ink hover:bg-paper"
                           >
                             Voir les photos
                           </button>

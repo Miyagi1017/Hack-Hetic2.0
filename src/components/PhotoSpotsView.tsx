@@ -2,19 +2,12 @@ import React, { useState } from 'react';
 import { 
   Camera, 
   MapPin, 
-  Clock, 
   Sun, 
   Star, 
   Heart, 
   ExternalLink, 
   Sparkles, 
-  Compass, 
   Search, 
-  Filter, 
-  Bookmark, 
-  ThumbsUp, 
-  ShieldCheck,
-  Eye,
   User,
   ArrowRight
 } from 'lucide-react';
@@ -58,42 +51,26 @@ export const PhotoSpotsView: React.FC<PhotoSpotsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6">
-        <div className="relative z-10 max-w-2xl">
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-            <Camera className="h-3.5 w-3.5" />
-            Spots photo & avis vérifiés
-          </span>
+      <div className="rounded-2xl border border-line bg-white p-5 sm:p-6">
+        <div className="max-w-2xl">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Spots photo & avis
+          </p>
 
-          <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-            Les meilleurs angles, heure dorée et retours d'expérience
+          <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            Les meilleurs angles et la meilleure heure
           </h2>
 
           <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-            Des cadrages repérés sur <strong className="font-semibold text-ink-soft">Google Maps</strong>,{' '}
-            <strong className="font-semibold text-ink-soft">Instagram</strong>,{' '}
-            <strong className="font-semibold text-ink-soft">Pinterest</strong> et les communautés Facebook.
+            Des cadrages repérés sur Google Maps, Instagram, Pinterest et les communautés Facebook.
           </p>
         </div>
 
-        {/* Floating Stat Badges */}
-        <div className="mt-5 grid grid-cols-2 gap-2 border-t border-line pt-5 sm:grid-cols-4">
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2">
-            <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-            <span className="text-[11px] font-semibold text-ink">Google · 4,9/5</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2">
-            <Camera className="h-3.5 w-3.5 text-ink-soft" />
-            <span className="text-[11px] font-semibold text-ink">Instagram · 500k+</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2">
-            <Bookmark className="h-3.5 w-3.5 text-ink-soft" />
-            <span className="text-[11px] font-semibold text-ink">Pinterest · 220k+</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2">
-            <ThumbsUp className="h-3.5 w-3.5 text-ink-soft" />
-            <span className="text-[11px] font-semibold text-ink">Facebook · 98%</span>
-          </div>
+        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4">
+          <span className="text-[11px] font-semibold text-ink">Google · 4,9/5</span>
+          <span className="text-[11px] font-semibold text-ink">Instagram · 500k+</span>
+          <span className="text-[11px] font-semibold text-ink">Pinterest · 220k+</span>
+          <span className="text-[11px] font-semibold text-ink">Facebook · 98%</span>
         </div>
       </div>
 

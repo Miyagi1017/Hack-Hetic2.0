@@ -48,6 +48,9 @@ import {
 } from './data/mock-data';
 import { InteractiveMap } from './components/InteractiveMap';
 import { TimelineItem } from './components/TimelineItem';
+import { DayPartHeader } from './components/DayPartHeader';
+import { CityEventsStrip } from './components/CityEventsStrip';
+import { groupStepsByDayPart } from './data/day-parts';
 import { SafeImage } from './components/SafeImage';
 import { ContextPanel } from './components/ContextPanel';
 import { ConflictResolutionModal } from './components/ConflictResolutionModal';
@@ -303,6 +306,7 @@ export default function App() {
 
   // Other Modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isComfortOpen, setIsComfortOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [comfort, setComfort] = useState<ComfortSettings>(() => readComfort());
@@ -1200,274 +1204,200 @@ export default function App() {
       {/* ============ NAVIGATION HEADER ============ */}
       <header className="bg-white/90 supports-[backdrop-filter]:bg-white/75 backdrop-blur-xl border-b border-line/80 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          {/* Logo & Destination Picker Trigger */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Logo, destination et repères du séjour */}
+          <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => setActiveTab('home')}
-              aria-label="Revenir à l'accueil"
-              className="w-10 h-10 rounded-[14px] bg-ink flex items-center justify-center text-white shadow-sm ring-1 ring-ink/10 hover:bg-ink-soft"
+              className="shrink-0 font-serif text-[22px] font-semibold tracking-tight text-ink"
             >
-              <Compass className="w-5 h-5 text-amber-300" />
+              Voyage
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-[22px] font-semibold font-serif text-ink tracking-tight">
-                  Voyage
-                </h1>
-                <button
-                  onClick={() => setIsDestinationSelectorOpen(true)}
-                  className="group flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm ring-1 ring-ink/10 transition-colors hover:bg-ink-soft"
-                  title="Changer de destination"
-                >
-                  <MapPin className="h-3.5 w-3.5 text-amber-300" />
-                  <span className="hidden text-white/60 sm:inline">Destination</span>
-                  <span>{cityName}</span>
-                  <ChevronDown className="h-3 w-3 text-white/70 transition-transform group-hover:translate-y-0.5" />
-                </button>
-              </div>
-              <div className="hidden items-center gap-2 whitespace-nowrap text-[11px] text-muted sm:flex">
-                <button
-                  onClick={() => setIsDateModalOpen(true)}
-                  title="Modifier les dates et le nombre de voyageurs"
-                  className="group flex cursor-pointer items-center gap-1 rounded-full border border-transparent px-1 py-0.5 transition-colors hover:border-line hover:bg-paper hover:text-ink"
-                >
-                  <CalendarDays className="h-3 w-3 text-accent" />
-                  <span>
-                    {trip.duration} · {trip.travelers} voyageur
-                    {trip.travelers > 1 ? 's' : ''}
-                  </span>
-                  <Pencil className="h-2.5 w-2.5 text-muted group-hover:text-accent" />
-                </button>
-                <span className="text-line-strong">•</span>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trip.destination)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-0.5 hover:text-accent"
-                >
-                  <Navigation className="w-3 h-3" />
-                  <span>Google Maps</span>
-                  <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              </div>
+            <span className="hidden h-4 w-px bg-line sm:block" aria-hidden="true" />
+            <div className="min-w-0">
+              <button
+                onClick={() => setIsDestinationSelectorOpen(true)}
+                title="Changer de destination"
+                className="group flex min-w-0 items-center gap-1 text-[13px] font-semibold text-ink transition-colors hover:text-accent"
+              >
+                <span className="truncate">{cityName}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted transition-transform group-hover:translate-y-0.5" />
+              </button>
+              <button
+                onClick={() => setIsDateModalOpen(true)}
+                title="Modifier les dates et le nombre de voyageurs"
+                className="mt-0.5 hidden whitespace-nowrap text-[11px] text-muted transition-colors hover:text-ink sm:block"
+              >
+                {trip.duration} · {trip.travelers} voyageur{trip.travelers > 1 ? 's' : ''}
+              </button>
             </div>
           </div>
 
-          {/* Desktop Navigation Tabs */}
-          <nav className="hidden xl:flex items-center gap-1 bg-paper-deep/70 p-1.5 rounded-full border border-line/80 shadow-2xs">
-            <button
-              onClick={() => setActiveTab('home')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'home'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              Accueil
-            </button>
-            <button
-              onClick={() => setActiveTab('plan')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'plan'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              Planificateur
-            </button>
-            <button
-              onClick={() => setActiveTab('explore')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'explore'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              Explorer
-            </button>
-            <button
-              onClick={() => setActiveTab('photospots')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'photospots'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              <Camera className="w-3.5 h-3.5 text-pink-600" />
-              <span>Spots & Avis</span>
-              <span className="bg-pink-100 text-pink-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                {CURATED_PHOTO_SPOTS.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('wishlist')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'wishlist'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-              <span>Liste d'envies</span>
-              <span className="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                {wishlist.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('reservations')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'reservations'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              <Ticket className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Réservations</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                {reservations.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('restrictions')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'restrictions'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              <span>Restrictions</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('budget')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'budget'
-                  ? 'bg-white text-ink shadow-xs ring-1 ring-ink/5'
-                  : 'text-muted hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              Budget
-            </button>
+          {/* Navigation principale — texte seul, l'essentiel reste visible */}
+          <nav className="hidden items-center gap-1 lg:flex">
+            {[
+              { id: 'home', label: 'Accueil' },
+              { id: 'plan', label: 'Itinéraire' },
+              { id: 'explore', label: 'Explorer' },
+              { id: 'reservations', label: 'Réservations' },
+              { id: 'budget', label: 'Budget' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as typeof activeTab)}
+                aria-current={activeTab === item.id ? 'page' : undefined}
+                className={`relative cursor-pointer px-3 py-2 text-[13px] font-medium transition-colors ${
+                  activeTab === item.id ? 'text-ink' : 'text-muted hover:text-ink'
+                }`}
+              >
+                {item.label}
+                {activeTab === item.id && (
+                  <span
+                    className="absolute inset-x-3 -bottom-0.5 h-[2px] rounded-full bg-ink"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            ))}
+
+            <div className="relative">
+              <button
+                onClick={() => setIsMoreOpen((prev) => !prev)}
+                aria-expanded={isMoreOpen}
+                aria-haspopup="menu"
+                className={`cursor-pointer px-3 py-2 text-[13px] font-medium transition-colors ${
+                  isMoreOpen ? 'text-ink' : 'text-muted hover:text-ink'
+                }`}
+              >
+                Plus
+              </button>
+
+              {isMoreOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setIsMoreOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-30 mt-2 w-60 overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-md"
+                  >
+                    {[
+                      { id: 'wishlist', label: `Envies (${wishlist.length})` },
+                      { id: 'photospots', label: `Spots photo (${CURATED_PHOTO_SPOTS.length})` },
+                      { id: 'restrictions', label: 'Infos pratiques' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        role="menuitem"
+                        onClick={() => {
+                          setActiveTab(item.id as typeof activeTab);
+                          setIsMoreOpen(false);
+                        }}
+                        className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                      >
+                        <span>{item.label}</span>
+                        <span aria-hidden="true" className="text-muted">→</span>
+                      </button>
+                    ))}
+
+                    <div className="my-1.5 h-px bg-line" aria-hidden="true" />
+
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setIsCurrencyOpen(true);
+                        setIsMoreOpen(false);
+                      }}
+                      className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                    >
+                      <span>Convertir une devise</span>
+                      <span className="text-muted">€</span>
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setIsComfortOpen(true);
+                        setIsMoreOpen(false);
+                      }}
+                      className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                    >
+                      <span>Confort de lecture</span>
+                      <span className="text-muted">Aa</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </nav>
 
-          {/* Right Header: Devise + Confort + Assistant + Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => setIsCurrencyOpen(true)}
-              aria-label="Convertisseur de devises"
-              title="Convertisseur de devises"
-              className="flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-line bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3"
-            >
-              <Coins className="h-3 w-3 text-gold" />
-              <span className="hidden sm:inline">Devise</span>
-            </button>
-
-            <button
-              onClick={() => setIsComfortOpen(true)}
-              aria-label="Réglages de confort et d'accessibilité"
-              title="Confort de lecture"
-              className="flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-line bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3"
-            >
-              <Accessibility className="h-3 w-3 text-accent" />
-              <span className="hidden sm:inline">Confort</span>
-            </button>
-
+          {/* Actions : concierge et profil, sans icônes superflues */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <button
               onClick={() => setIsChatOpen(!isChatOpen)}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition-all cursor-pointer sm:px-3.5 ${
-                isChatOpen
-                  ? 'bg-ink text-white border-ink'
-                  : 'bg-white hover:bg-paper text-ink border-line shadow-2xs'
+              aria-pressed={isChatOpen}
+              className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                isChatOpen ? 'bg-ink text-white' : 'text-ink-soft hover:bg-paper-deep'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span className="hidden sm:inline">Concierge IA</span>
+              Concierge
             </button>
 
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="flex items-center gap-2 p-1 pl-2 sm:pr-3 rounded-full hover:bg-paper border border-transparent hover:border-line transition-all cursor-pointer"
+              aria-label={`Profil de ${user.name}`}
+              className="flex cursor-pointer items-center gap-2 rounded-full p-0.5 transition-colors hover:bg-paper-deep"
             >
               <SafeImage
                 src={user.avatar}
                 alt={user.name}
-                className="h-8 w-8 rounded-full border border-ink object-cover"
-                icon={<User className="h-4 w-4 text-ink/40" aria-hidden="true" />}
+                className="h-8 w-8 rounded-full object-cover"
+                icon={<span className="text-[10px] font-semibold text-ink/50">EV</span>}
               />
-              <span className="hidden text-xs font-semibold text-ink sm:inline">
-                {user.name}
+              <span className="hidden text-[12px] font-medium text-ink-soft sm:inline">
+                {user.name.split(' ')[0]}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Mobile Sub-Navigation Bar */}
-        <div className="relative xl:hidden">
-          <div className="flex gap-1.5 overflow-x-auto border-t border-line bg-white px-4 py-2 no-scrollbar">
-            <button
-              onClick={() => setActiveTab('plan')}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'plan' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
-            >
-              Planificateur
-            </button>
-            <button
-              onClick={() => setActiveTab('explore')}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'explore' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
-            >
-              Explorer
-            </button>
-            <button
-              onClick={() => setActiveTab('photospots')}
-              className={`flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'photospots' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
-            >
-              <Camera className={`h-3 w-3 ${activeTab === 'photospots' ? 'text-amber-300' : 'text-rose-500'}`} />
-              <span>Spots & Avis ({CURATED_PHOTO_SPOTS.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('wishlist')}
-              className={`flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'wishlist' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
-            >
-              <Heart
-                className={`h-3 w-3 ${
-                  activeTab === 'wishlist' ? 'fill-amber-300 text-amber-300' : 'fill-rose-500 text-rose-500'
+        {/* Navigation mobile — mêmes libellés, sans icônes */}
+        <div className="border-t border-line lg:hidden">
+          <div className="no-scrollbar flex gap-4 overflow-x-auto px-4 py-2">
+            {[
+              { id: 'home', label: 'Accueil' },
+              { id: 'plan', label: 'Itinéraire' },
+              { id: 'explore', label: 'Explorer' },
+              { id: 'reservations', label: `Réservations (${reservations.length})` },
+              { id: 'wishlist', label: `Envies (${wishlist.length})` },
+              { id: 'budget', label: 'Budget' },
+              { id: 'photospots', label: 'Spots photo' },
+              { id: 'restrictions', label: 'Infos' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as typeof activeTab)}
+                aria-current={activeTab === item.id ? 'page' : undefined}
+                className={`whitespace-nowrap py-1 text-[12px] font-medium transition-colors ${
+                  activeTab === item.id ? 'text-ink underline decoration-2 underline-offset-4' : 'text-muted'
                 }`}
-              />
-              <span>Envies ({wishlist.length})</span>
+              >
+                {item.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setIsCurrencyOpen(true)}
+              className="whitespace-nowrap py-1 text-[12px] font-medium text-muted"
+            >
+              Devise
             </button>
             <button
-              onClick={() => setActiveTab('reservations')}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'reservations' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
+              onClick={() => setIsComfortOpen(true)}
+              className="whitespace-nowrap py-1 text-[12px] font-medium text-muted"
             >
-              Réservations ({reservations.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('restrictions')}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'restrictions' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
-            >
-              Restrictions
-            </button>
-            <button
-              onClick={() => setActiveTab('budget')}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                activeTab === 'budget' ? 'bg-ink text-white shadow-xs' : 'border border-line bg-paper text-muted'
-              }`}
-            >
-              Budget
+              Confort
             </button>
           </div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white via-white/80 to-transparent" />
         </div>
       </header>
 
@@ -1653,114 +1583,70 @@ export default function App() {
           <div className="space-y-6">
             {/* --- Alerte règles & coutumes locales --- */}
             {!isRestrictionsBannerHidden && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50 via-[#fdf8ec] to-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-amber-700 ring-1 ring-amber-200">
-                    <ShieldCheck className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink">
-                      {mandatoryRestrictions.length} règle
-                      {mandatoryRestrictions.length > 1 ? 's' : ''} obligatoire
-                      {mandatoryRestrictions.length > 1 ? 's' : ''} à {cityName}{' '}
-                      <span className="ml-1 font-normal text-muted">
-                        · {cityTraditions.length} coutumes · {cityFestivals.length} festivités
-                      </span>
-                    </p>
-                    <p className="mt-0.5 line-clamp-1 text-xs text-ink-soft">
-                      {mandatoryRestrictions[0]?.title ?? 'Règles locales vérifiées'} — vérifiez les
-                      usages avant de partir.
-                    </p>
-                  </div>
+              <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-ink">
+                    {mandatoryRestrictions.length} règle
+                    {mandatoryRestrictions.length > 1 ? 's' : ''} obligatoire
+                    {mandatoryRestrictions.length > 1 ? 's' : ''} à {cityName}{' '}
+                    <span className="ml-1 font-normal text-muted">
+                      · {cityTraditions.length} coutumes · {cityFestivals.length} festivités
+                    </span>
+                  </p>
+                  <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-soft">
+                    {mandatoryRestrictions[0]?.title ?? 'Règles locales vérifiées'} — vérifiez les
+                    usages avant de partir.
+                  </p>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-3">
                   <button
                     onClick={() => setActiveTab('restrictions')}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-3.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                    className="cursor-pointer text-[11px] font-semibold text-ink underline-offset-4 hover:underline"
                   >
-                    Voir les règles & coutumes
-                    <ArrowRight className="h-3 w-3" />
+                    Voir les règles & coutumes →
                   </button>
                   <button
                     onClick={() => setIsRestrictionsBannerHidden(true)}
                     aria-label="Masquer l'alerte règles locales"
-                    className="cursor-pointer rounded-full p-1.5 text-muted transition-colors hover:bg-white hover:text-ink"
+                    className="cursor-pointer text-[11px] text-muted hover:text-ink"
                   >
-                    <X className="h-4 w-4" />
+                    Masquer
                   </button>
                 </div>
               </div>
             )}
 
             {/* --- Carte du trajet : élément principal de la page --- */}
-            <section className="overflow-hidden rounded-[28px] border border-line bg-white shadow-md">
-              <div className="flex flex-col gap-4 border-b border-line/80 bg-gradient-to-br from-[#fffdf9] via-white to-[#fbf6ec] px-5 py-5 sm:px-7 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-                    <MapPin className="h-3.5 w-3.5" />
-                    Carte du trajet
-                  </p>
-                  <h2 className="mt-1.5 flex flex-wrap items-baseline gap-x-2 font-serif text-[26px] font-semibold leading-tight tracking-tight text-ink sm:text-[30px]">
-                    <span>Jour {currentDay}</span>
-                    <span className="text-xl text-line-strong sm:text-2xl">·</span>
-                    <span>{cityName}</span>
-                  </h2>
-                  <p className="mt-1 text-[13px] text-muted">
-                    {currentSteps.length} étapes · {travelMinutes > 0 ? `${travelMinutes} min de trajet` : 'trajets à pied'} · vue d'ensemble de votre journée
-                  </p>
-
-                  {/* Date & plage horaire du jour */}
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    {dayDateLabel && (
-                      <button
-                        onClick={() => setIsDateModalOpen(true)}
-                        title="Modifier les dates et le nombre de voyageurs"
-                        className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-ink-soft shadow-2xs transition-colors hover:border-accent/40 hover:bg-white hover:text-ink"
-                      >
-                        <CalendarDays className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-                        <span>{dayDateLabel}</span>
-                        <Pencil
-                          className="h-2.5 w-2.5 text-muted transition-colors group-hover:text-accent"
-                          aria-hidden="true"
-                        />
-                      </button>
-                    )}
-                    {dayTimeLabel && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-ink-soft shadow-2xs">
-                        <Clock className="h-3.5 w-3.5 text-gold" aria-hidden="true" />
-                        <span>{dayTimeLabel}</span>
-                        <span className="font-normal text-muted">sur la journée</span>
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setIsDateModalOpen(true)}
-                      title="Modifier le nombre de voyageurs"
-                      className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-ink-soft shadow-2xs transition-colors hover:border-accent/40 hover:bg-white hover:text-ink"
-                    >
-                      <Users className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-                      <span>
-                        {trip.travelers} voyageur{trip.travelers > 1 ? 's' : ''}
-                      </span>
-                      <Pencil
-                        className="h-2.5 w-2.5 text-muted transition-colors group-hover:text-accent"
-                        aria-hidden="true"
-                      />
-                    </button>
-                    <button
-                      onClick={() => setIsDestinationSelectorOpen(true)}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-accent/25 bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent shadow-2xs transition-colors hover:border-accent/50 hover:bg-[#f8e3d8]"
-                    >
-                      <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                      Changer de destination
-                      <ChevronDown className="h-3 w-3" aria-hidden="true" />
-                    </button>
+            <section className="overflow-hidden rounded-2xl border border-line bg-white">
+              <div className="border-b border-line px-5 py-5 sm:px-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+                      Itinéraire
+                    </p>
+                    <h2 className="mt-1 flex flex-wrap items-baseline gap-x-2 font-serif text-[26px] font-semibold leading-tight tracking-tight text-ink sm:text-[30px]">
+                      <span>Jour {currentDay}</span>
+                      <span className="text-xl text-line-strong sm:text-2xl">·</span>
+                      <span>{cityName}</span>
+                    </h2>
+                    <p className="mt-1 text-[12px] text-muted">
+                      {[
+                        dayDateLabel,
+                        dayTimeLabel,
+                        `${currentSteps.length} étapes`,
+                        `${trip.travelers} voyageur${trip.travelers > 1 ? 's' : ''}`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
                   </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {/* Sélecteur de jour */}
-                  <div className="flex items-center gap-1 rounded-full border border-line bg-white/85 p-1 shadow-2xs backdrop-blur-sm">
+                  <div
+                    className="flex items-center gap-2.5"
+                    role="tablist"
+                    aria-label="Jours du séjour"
+                  >
                     {Array.from({ length: trip.daysCount }, (_, i) => i + 1).map((day) => {
                       const hasConflictThisDay = trip.steps[day]?.some((s) => !!s.conflict);
                       const isActive = currentDay === day;
@@ -1768,132 +1654,145 @@ export default function App() {
                         <button
                           key={day}
                           onClick={() => setCurrentDay(day)}
+                          role="tab"
                           aria-label={`Afficher le jour ${day}`}
-                          aria-pressed={isActive}
+                          aria-selected={isActive}
                           title={getDayDateLabel(day) ?? undefined}
-                          className={`relative flex h-9 items-center justify-center rounded-full px-3.5 text-xs font-semibold ${
-                            isActive
-                              ? 'bg-ink text-white shadow-xs'
-                              : 'text-muted hover:bg-paper hover:text-ink'
+                          className={`relative cursor-pointer py-1 text-[13px] font-semibold transition-colors ${
+                            isActive ? 'text-ink' : 'text-muted hover:text-ink'
                           }`}
                         >
                           J{day}
+                          {isActive && (
+                            <span
+                              className="absolute inset-x-0 -bottom-0.5 h-[2px] rounded-full bg-ink"
+                              aria-hidden="true"
+                            />
+                          )}
                           {hasConflictThisDay && (
-                            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-1 ring-white" />
+                            <span className="absolute -right-2 top-0 h-1.5 w-1.5 rounded-full bg-amber-500" />
                           )}
                         </button>
                       );
                     })}
                   </div>
+                </div>
 
-                  <button
-                    onClick={handleOptimizeTrip}
-                    className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold shadow-xs ${
-                      hasConflict
-                        ? 'bg-amber-500 text-white hover:bg-amber-600'
-                        : 'bg-ink text-white hover:bg-ink-soft'
-                    }`}
-                  >
-                    {hasConflict ? <AlertTriangle className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                    <span>{hasConflict ? 'Résoudre' : 'Optimiser'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleRecalculateRoute()}
-                    title="Recalculer les temps de trajet du jour"
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2.5 text-xs font-semibold text-ink shadow-2xs transition-colors hover:border-line-strong hover:bg-paper"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 text-accent" />
-                    <span>Recalculer</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setScheduleDay(currentDay);
-                      setIsScheduleOpen(true);
-                    }}
-                    title="Modifier les horaires du jour"
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2.5 text-xs font-semibold text-ink shadow-2xs transition-colors hover:border-line-strong hover:bg-paper"
-                  >
-                    <Clock className="h-3.5 w-3.5 text-accent" />
-                    <span>Horaires</span>
-                  </button>
-
-                  <button
-                    onClick={() => setIsGlobalEditOpen(true)}
-                    title="Modifier tous les choix et tout recalculer"
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2.5 text-xs font-semibold text-ink shadow-2xs transition-colors hover:border-line-strong hover:bg-paper"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5 text-accent" />
-                    <span>Tout modifier</span>
-                  </button>
-
-                  {/* Programme aléatoire */}
-                  <div className="relative">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line/70 pt-3">
+                  <div className="flex items-center gap-4 text-[11px]">
                     <button
-                      onClick={() => setIsRandomMenuOpen((prev) => !prev)}
-                      aria-expanded={isRandomMenuOpen}
-                      aria-haspopup="menu"
-                      className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2.5 text-xs font-semibold text-ink shadow-2xs transition-colors hover:border-line-strong hover:bg-paper"
+                      onClick={() => setIsDateModalOpen(true)}
+                      className="cursor-pointer font-medium text-muted transition-colors hover:text-ink hover:underline"
                     >
-                      <Shuffle className="h-3.5 w-3.5 text-accent" />
-                      <span>Aléatoire</span>
-                      <ChevronDown className="h-3 w-3 text-muted" />
+                      Dates
+                    </button>
+                    <button
+                      onClick={() => setIsDestinationSelectorOpen(true)}
+                      className="cursor-pointer font-medium text-muted transition-colors hover:text-ink hover:underline"
+                    >
+                      Destination
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={handleOptimizeTrip}
+                      className={`cursor-pointer rounded-full px-4 py-2 text-[12px] font-semibold ${
+                        hasConflict
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-ink text-white hover:bg-ink-soft'
+                      }`}
+                    >
+                      {hasConflict ? 'Résoudre' : 'Optimiser'}
                     </button>
 
-                    {isRandomMenuOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-20"
-                          onClick={() => setIsRandomMenuOpen(false)}
-                          aria-hidden="true"
-                        />
-                        <div
-                          role="menu"
-                          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-xl animate-in fade-in duration-150 sm:left-auto sm:right-0"
-                        >
-                          <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
-                            Choisir un programme au hasard
-                          </p>
-                          <button
-                            role="menuitem"
-                            onClick={() => handleRandomProgram('day')}
-                            className="flex w-full cursor-pointer items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-paper"
+                    <button
+                      onClick={() => {
+                        setScheduleDay(currentDay);
+                        setIsScheduleOpen(true);
+                      }}
+                      title="Modifier les horaires du jour"
+                      className="cursor-pointer rounded-full border border-line bg-white px-3 py-2 text-[12px] font-semibold text-ink transition-colors hover:bg-paper"
+                    >
+                      Horaires
+                    </button>
+
+                    {/* Actions secondaires, regroupées */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setIsRandomMenuOpen((prev) => !prev)}
+                        aria-expanded={isRandomMenuOpen}
+                        aria-haspopup="menu"
+                        className="cursor-pointer rounded-full border border-line bg-white px-3 py-2 text-[12px] font-semibold text-ink transition-colors hover:bg-paper"
+                      >
+                        Plus
+                      </button>
+
+                      {isRandomMenuOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-20"
+                            onClick={() => setIsRandomMenuOpen(false)}
+                            aria-hidden="true"
+                          />
+                          <div
+                            role="menu"
+                            className="absolute right-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-md animate-in fade-in duration-150"
                           >
-                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
-                              <Shuffle className="h-3.5 w-3.5" />
-                            </span>
-                            <span>
-                              <span className="block text-xs font-semibold text-ink">
+                            <button
+                              role="menuitem"
+                              onClick={() => {
+                                handleRecalculateRoute();
+                                setIsRandomMenuOpen(false);
+                              }}
+                              className="w-full cursor-pointer rounded-xl px-2.5 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                            >
+                              Recalculer les trajets
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => {
+                                setIsGlobalEditOpen(true);
+                                setIsRandomMenuOpen(false);
+                              }}
+                              className="w-full cursor-pointer rounded-xl px-2.5 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                            >
+                              Modifier tous les choix
+                            </button>
+
+                            <div className="my-1.5 h-px bg-line" aria-hidden="true" />
+                            <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                              Programme au hasard
+                            </p>
+                            <button
+                              role="menuitem"
+                              onClick={() => handleRandomProgram('day')}
+                              className="w-full cursor-pointer rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-paper"
+                            >
+                              <span className="block text-[13px] font-medium text-ink">
                                 Journée au hasard
                               </span>
                               <span className="mt-0.5 block text-[11px] leading-snug text-muted">
-                                Réordonne les étapes du jour {currentDay} en gardant les horaires.
+                                Réordonne les étapes du jour {currentDay}.
                               </span>
-                            </span>
-                          </button>
-                          <button
-                            role="menuitem"
-                            onClick={() => handleRandomProgram('trip')}
-                            className="flex w-full cursor-pointer items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-paper"
-                          >
-                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold-soft text-gold">
-                              <Dices className="h-3.5 w-3.5" />
-                            </span>
-                            <span>
-                              <span className="block text-xs font-semibold text-ink">
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => handleRandomProgram('trip')}
+                              className="w-full cursor-pointer rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-paper"
+                            >
+                              <span className="block text-[13px] font-medium text-ink">
                                 Séjour complet au hasard
                               </span>
                               <span className="mt-0.5 block text-[11px] leading-snug text-muted">
-                                Mélange les étapes de chaque journée de {cityName}.
+                                Mélange les étapes de chaque journée.
                               </span>
-                            </span>
-                          </button>
-                        </div>
-                      </>
-                    )}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-
                 </div>
               </div>
 
@@ -1915,51 +1814,39 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Bandeau de synthèse */}
+              {/* Bandeau de synthèse — chiffres seuls, lisibles d'un coup d'œil */}
               <div className="grid grid-cols-2 gap-px border-t border-line bg-line sm:grid-cols-4">
-                <div className="flex items-center gap-3 bg-white px-4 py-3.5 sm:px-5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-paper text-ink-soft">
-                    <MapPin className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold leading-none text-ink">{currentSteps.length}</p>
-                    <p className="mt-1 truncate text-[11px] text-muted">étapes planifiées</p>
-                  </div>
+                <div className="bg-white px-4 py-3.5 sm:px-5">
+                  <p className="font-serif text-lg font-semibold leading-none text-ink">
+                    {currentSteps.length}
+                  </p>
+                  <p className="mt-1 truncate text-[11px] text-muted">étapes planifiées</p>
                 </div>
-                <div className="flex items-center gap-3 bg-white px-4 py-3.5 sm:px-5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold-soft text-gold">
-                    <Clock className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold leading-none text-ink">{travelMinutes} min</p>
-                    <p className="mt-1 truncate text-[11px] text-muted">entre les étapes</p>
-                  </div>
+                <div className="bg-white px-4 py-3.5 sm:px-5">
+                  <p className="font-serif text-lg font-semibold leading-none text-ink">
+                    {travelMinutes} min
+                  </p>
+                  <p className="mt-1 truncate text-[11px] text-muted">entre les étapes</p>
                 </div>
-                <div className="flex items-center gap-3 bg-white px-4 py-3.5 sm:px-5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                    <Euro className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold leading-none text-ink">{totalCost.toFixed(0)} €</p>
-                    <p className="mt-1 truncate text-[11px] text-muted">sur {trip.budgetTotal} € · {budgetPercent}%</p>
-                  </div>
+                <div className="bg-white px-4 py-3.5 sm:px-5">
+                  <p className="font-serif text-lg font-semibold leading-none text-ink">
+                    {totalCost.toFixed(0)} €
+                  </p>
+                  <p className="mt-1 truncate text-[11px] text-muted">
+                    sur {trip.budgetTotal} € · {budgetPercent}%
+                  </p>
                 </div>
-                <div className="flex items-center gap-3 bg-white px-4 py-3.5 sm:px-5">
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                      hasConflict ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-700'
+                <div className="bg-white px-4 py-3.5 sm:px-5">
+                  <p
+                    className={`font-serif text-lg font-semibold leading-none ${
+                      hasConflict ? 'text-amber-700' : 'text-ink'
                     }`}
                   >
-                    {hasConflict ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold leading-none text-ink">
-                      {hasConflict ? '1 à régler' : 'Aucun'}
-                    </p>
-                    <p className="mt-1 truncate text-[11px] text-muted">
-                      {hasConflict ? 'conflit d\'horaires' : 'horaires vérifiés'}
-                    </p>
-                  </div>
+                    {hasConflict ? '1 à régler' : 'Aucun'}
+                  </p>
+                  <p className="mt-1 truncate text-[11px] text-muted">
+                    {hasConflict ? "conflit d'horaires" : 'horaires vérifiés'}
+                  </p>
                 </div>
               </div>
             </section>
@@ -1967,53 +1854,71 @@ export default function App() {
             {/* --- Timeline + panneau de contexte --- */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
               <section className="lg:col-span-7 xl:col-span-8">
-                <div className="mb-4 flex items-end justify-between gap-3 px-1">
+                <div className="mb-4 flex items-baseline justify-between gap-3 px-1">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                       Programme du jour
                     </p>
                     <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">
-                      Jour {currentDay} à {cityName}
+                      Le fil de la journée
                     </h2>
-                    <p className="mt-0.5 text-[13px] text-muted">
-                      {currentSteps.length} étapes · rythme équilibré
-                    </p>
                   </div>
 
-                  {hasConflict ? (
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                      <AlertTriangle className="h-3 w-3" />
-                      1 conflit
-                    </span>
-                  ) : (
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-                      <CheckCircle className="h-3 w-3" />
-                      Journée fluide
-                    </span>
-                  )}
+                  <span
+                    className={`shrink-0 text-[11px] font-semibold ${
+                      hasConflict ? 'text-amber-700' : 'text-muted'
+                    }`}
+                  >
+                    {hasConflict ? '1 conflit à régler' : 'Journée fluide'}
+                  </span>
                 </div>
 
+                <CityEventsStrip
+                  city={cityName}
+                  country={trip.country}
+                  festivals={cityFestivals}
+                  traditions={cityTraditions}
+                  onSeeAll={() => setActiveTab('restrictions')}
+                />
+
                 <div className="space-y-0">
-                  {currentSteps.map((step, idx) => (
-                    <TimelineItem
-                      key={step.activity.id}
-                      step={step}
-                      index={idx}
-                      totalSteps={currentSteps.length}
-                      nextStep={currentSteps[idx + 1]}
-                      isSelected={selectedActivity?.id === step.activity.id}
-                      onSelect={() => setSelectedActivity(step.activity)}
-                      onOpenConflict={() => setActiveConflictStep(step)}
-                      onOpenComparator={handleOpenComparator}
-                      onOpenPhotoSpot={handleOpenPhotoSpot}
-                      onToggleWishlist={handleToggleWishlist}
-                      isWishlisted={wishlist.some((w) => w.id === step.activity.id)}
-                      onUpdateRating={handleUpdateRating}
-                      onMoveUp={idx > 0 ? () => handleMoveStep(idx, 'up') : undefined}
-                      onMoveDown={idx < currentSteps.length - 1 ? () => handleMoveStep(idx, 'down') : undefined}
-                      onReplace={() => handleStartReplace(idx)}
-                      onUpdateTime={(time) => handleUpdateStepTime(idx, time)}
-                    />
+                  {groupStepsByDayPart(currentSteps).map((section, sectionIndex) => (
+                    <div key={section.part.id}>
+                      <DayPartHeader
+                        part={section.part}
+                        count={section.steps.length}
+                        isFirst={sectionIndex === 0}
+                      />
+
+                      {section.steps.map((step) => {
+                        const idx = currentSteps.indexOf(step);
+                        return (
+                          <TimelineItem
+                            key={step.activity.id}
+                            step={step}
+                            index={idx}
+                            totalSteps={currentSteps.length}
+                            nextStep={currentSteps[idx + 1]}
+                            isSelected={selectedActivity?.id === step.activity.id}
+                            onSelect={() => setSelectedActivity(step.activity)}
+                            onOpenConflict={() => setActiveConflictStep(step)}
+                            onOpenComparator={handleOpenComparator}
+                            onOpenPhotoSpot={handleOpenPhotoSpot}
+                            onToggleWishlist={handleToggleWishlist}
+                            isWishlisted={wishlist.some((w) => w.id === step.activity.id)}
+                            onUpdateRating={handleUpdateRating}
+                            onMoveUp={idx > 0 ? () => handleMoveStep(idx, 'up') : undefined}
+                            onMoveDown={
+                              idx < currentSteps.length - 1
+                                ? () => handleMoveStep(idx, 'down')
+                                : undefined
+                            }
+                            onReplace={() => handleStartReplace(idx)}
+                            onUpdateTime={(time) => handleUpdateStepTime(idx, time)}
+                          />
+                        );
+                      })}
+                    </div>
                   ))}
 
                   {currentSteps.length === 0 && (
@@ -2031,10 +1936,9 @@ export default function App() {
 
                 <button
                   onClick={handleOpenAddStep}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong bg-white/60 py-3.5 text-xs font-semibold text-ink-soft hover:border-ink hover:bg-white"
+                  className="mt-4 w-full rounded-xl border border-dashed border-line-strong bg-white/60 py-3.5 text-xs font-semibold text-ink-soft transition-colors hover:border-ink hover:bg-white"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>Ajouter une étape au jour {currentDay}</span>
+                  + Ajouter une étape au jour {currentDay}
                 </button>
               </section>
 
@@ -2193,13 +2097,10 @@ export default function App() {
       {!isChatOpen && (
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 rounded-full bg-ink px-4 py-3 text-sm font-semibold text-white shadow-xl ring-1 ring-white/10 hover:bg-ink-soft hover:shadow-2xl sm:bottom-6 sm:right-6 sm:px-5 sm:py-3.5"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2.5 text-[12px] font-semibold text-ink shadow-md transition-colors hover:bg-paper sm:bottom-6 sm:right-6"
         >
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-300" />
-          </span>
-          <span>Concierge IA</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-ink" aria-hidden="true" />
+          <span>Concierge</span>
         </button>
       )}
 

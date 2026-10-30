@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ShieldCheck,
   AlertTriangle,
   Info,
   CheckCircle2,
@@ -96,27 +95,24 @@ export const RestrictionsView: React.FC<RestrictionsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* En-tête */}
-      <div className="flex flex-col items-start justify-between gap-4 rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6 md:flex-row md:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line bg-white p-5 sm:p-6 md:flex-row md:items-center">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-900">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Vérification officielle des règles de voyage</span>
-          </div>
-          <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-            Restrictions, règles & coutumes — {city}
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Infos pratiques
+          </p>
+          <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            Règles & coutumes — {city}
           </h2>
           <p className="mt-1 text-[13px] text-muted">
-            Alertes pays, savoir-vivre local et calendrier festif, mis à jour automatiquement.
+            Alertes pays, savoir-vivre local et calendrier festif.
           </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
-            <AlertTriangle className="h-4 w-4" />
+          <span className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
             {mandatoryCount} règle{mandatoryCount > 1 ? 's' : ''} obligatoire{mandatoryCount > 1 ? 's' : ''}
           </span>
-          <span className="flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2 text-[11px] text-muted">
-            <Calendar className="h-4 w-4" />
+          <span className="rounded-xl border border-line bg-paper px-3 py-2 text-[11px] text-muted">
             Audit : octobre 2026
           </span>
         </div>
@@ -124,8 +120,7 @@ export const RestrictionsView: React.FC<RestrictionsViewProps> = ({
 
       {/* Restrictions */}
       <section className="space-y-3">
-        <h3 className="flex items-center gap-2 px-1 font-serif text-xl font-semibold text-ink">
-          <ShieldCheck className="h-4 w-4 text-ink-soft" />
+        <h3 className="px-1 font-serif text-xl font-semibold text-ink">
           Règles & restrictions locales
         </h3>
 

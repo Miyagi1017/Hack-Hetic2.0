@@ -167,16 +167,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Recherche & filtres */}
-      <div className="rounded-[26px] border border-line bg-white p-5 shadow-xs sm:p-6">
+      <div className="rounded-2xl border border-line bg-white p-5 sm:p-6">
         <div className="mb-5 max-w-2xl">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-            Exploration
-          </span>
-          <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-            Des pépites pour votre prochain voyage
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Explorer
+          </p>
+          <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            Des adresses pour votre voyage
           </h2>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
-            Adresses vérifiées, expériences locales et coups de cœur à {destination}.
+            Lieux vérifiés, expériences locales et coups de cœur à {destination}.
           </p>
         </div>
 
@@ -387,8 +387,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
         {/* Tranche horaire */}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-            <Clock className="h-3 w-3" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Tranche horaire
           </span>
 
@@ -500,9 +499,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 setValidatedCount(filtered.length);
                 onValidateChoices?.(filtered.length);
               }}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
+              className="cursor-pointer rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
             >
-              <RefreshCw className="h-3.5 w-3.5 text-amber-300" />
               Valider et recalculer
             </button>
           </div>
@@ -521,17 +519,15 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               {filtered.length > 1 ? 's' : ''} à {destination} · classées par horaire
             </p>
           </div>
-          <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-muted sm:flex">
-            <Compass className="h-3 w-3" />
+          <span className="hidden shrink-0 rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-muted sm:flex">
             Sélection Odyssée
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {filtered.length === 0 && (
-            <div className="col-span-full rounded-[24px] border border-dashed border-line bg-white px-5 py-10 text-center">
-              <Sparkles className="mx-auto h-5 w-5 text-gold" />
-              <p className="mt-2 text-sm font-semibold text-ink">Aucune adresse ne correspond</p>
+            <div className="col-span-full rounded-2xl border border-dashed border-line bg-white px-5 py-10 text-center">
+              <p className="text-sm font-semibold text-ink">Aucune adresse ne correspond</p>
               <p className="mt-1 text-xs text-muted">
                 Essayez sans le filtre « Mes envies » ou élargissez votre recherche.
               </p>
@@ -665,18 +661,17 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         rel="noreferrer"
                         title="Ouvrir dans Google Maps"
                         aria-label="Ouvrir dans Google Maps"
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:border-line-strong hover:bg-paper"
+                        className="flex h-8 items-center justify-center rounded-full border border-line px-2.5 text-[11px] font-semibold text-ink-soft hover:border-line-strong hover:bg-paper"
                       >
-                        <Navigation className="h-3.5 w-3.5" />
+                        Y aller
                       </a>
 
                       <button
                         onClick={() => onAskAIAboutActivity(item.name)}
-                        title="Demander des détails à l'IA"
-                        aria-label="Demander des détails à l'IA"
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:border-line-strong hover:bg-paper"
+                        title="Demander des détails au concierge"
+                        className="flex h-8 items-center justify-center rounded-full border border-line px-2.5 text-[11px] font-semibold text-ink-soft hover:border-line-strong hover:bg-paper"
                       >
-                        <Sparkles className="h-3.5 w-3.5 text-accent" />
+                        Conseil
                       </button>
 
                       <button

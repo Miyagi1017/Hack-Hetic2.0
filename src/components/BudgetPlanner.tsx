@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Minus, Plus, Sparkles, Wallet, RefreshCw } from 'lucide-react';
 
 export const BUDGET_MIN = 0;
 export const BUDGET_MAX = 100000;
@@ -167,16 +166,11 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
     >
       {/* En-tête */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold-soft text-gold">
-            <Wallet className="h-4 w-4" />
-          </span>
-          <div>
-            <h4 className="text-sm font-semibold text-ink">Enveloppe budget</h4>
-            <p className="mt-0.5 text-[11px] text-muted">
-              {city} · {travelers} voyageur{travelers > 1 ? 's' : ''} · {days} jours
-            </p>
-          </div>
+        <div>
+          <h4 className="text-sm font-semibold text-ink">Enveloppe budget</h4>
+          <p className="mt-0.5 text-[11px] text-muted">
+            {city} · {travelers} voyageur{travelers > 1 ? 's' : ''} · {days} jours
+          </p>
         </div>
 
         <div className="text-right">
@@ -191,8 +185,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
       {/* Diagnostic proactif du rythme quotidien */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-paper px-3 py-2">
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${rhythm.className}`}>
-          <Sparkles className="h-3 w-3" />
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${rhythm.className}`}>
           {rhythm.label}
         </span>
         <span className="text-[11px] text-muted">
@@ -235,9 +228,9 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             type="button"
             onClick={() => onChange(clamp(safeValue - nudge))}
             aria-label={`Réduire le budget de ${euro(nudge)}`}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-sm font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
           >
-            <Minus className="h-3.5 w-3.5" />
+            −
           </button>
 
           <input
@@ -257,9 +250,9 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             type="button"
             onClick={() => onChange(clamp(safeValue + nudge))}
             aria-label={`Augmenter le budget de ${euro(nudge)}`}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-sm font-semibold text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
           >
-            <Plus className="h-3.5 w-3.5" />
+            +
           </button>
         </div>
 
@@ -307,9 +300,8 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             <button
               type="button"
               onClick={() => applyManualBudget(true)}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+              className="cursor-pointer rounded-full bg-ink px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
             >
-              <RefreshCw className="h-3 w-3" />
               Valider et recalculer
             </button>
             <button
@@ -366,9 +358,8 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
         <button
           type="button"
           onClick={optimizeBudget}
-          className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+          className="cursor-pointer rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
         >
-          <Sparkles className="h-3 w-3 text-amber-300" />
           Optimiser l'enveloppe
         </button>
 
