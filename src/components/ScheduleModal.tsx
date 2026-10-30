@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CalendarClock, Check, Clock, X } from 'lucide-react';
 import { Trip } from '../types/travel';
+import { TimeField } from './TimeField';
 
 export interface ScheduleUpdate {
   day: number;
@@ -82,7 +83,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               </h3>
               <p className="mt-0.5 text-[11px] text-muted">
                 Choisissez l'heure de chaque visite ou activité, puis validez : tout est réordonné
-                et recalculé.
+                et recalculé. Aucune limite d'heure : 24:00 à 29:59 = après minuit.
               </p>
             </div>
           </div>
@@ -177,17 +178,13 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <Clock className="h-3 w-3 text-muted" />
-                          <input
-                            type="time"
+                          <TimeField
                             value={time}
-                            onChange={(event) =>
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [`${day}-${index}`]: event.target.value,
-                              }))
+                            onChange={(value) =>
+                              setDrafts((prev) => ({ ...prev, [`${day}-${index}`]: value }))
                             }
-                            aria-label={`Horaire de ${step.activity.name} (jour ${day})`}
-                            className="rounded-lg border border-line bg-paper px-2 py-1 text-sm font-semibold text-ink focus:border-ink focus:outline-none"
+                            ariaLabel={`Horaire de ${step.activity.name} (jour ${day})`}
+                            compact
                           />
                         </div>
                       </div>

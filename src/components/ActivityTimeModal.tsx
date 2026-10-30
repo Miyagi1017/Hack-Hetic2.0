@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Clock, MapPin, X } from 'lucide-react';
 import { Activity } from '../types/travel';
+import { TimeField } from './TimeField';
+import { normalizeTime } from '../data/time';
 
 interface ActivityTimeModalProps {
   isOpen: boolean;
@@ -75,20 +77,22 @@ export const ActivityTimeModal: React.FC<ActivityTimeModalProps> = ({
             )}
           </div>
 
-          <label
-            htmlFor="activity-time"
-            className="mt-4 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
+          <label className="mt-4 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
             <Clock className="h-3.5 w-3.5" />
             Heure souhaitée
           </label>
-          <input
-            id="activity-time"
-            type="time"
+          <TimeField
             value={time}
-            onChange={(event) => setTime(event.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-lg font-semibold text-ink focus:border-ink focus:outline-none"
+            onChange={setTime}
+            ariaLabel="Heure souhaitée pour l'activité"
+            placeholder="ex: 21:30"
+            large
+            className="mt-1.5"
           />
+          <p className="mt-1 text-[10px] text-muted">
+            Aucune limite : saisissez l'heure librement, de 00:00 à 29:59 (24:00 et au-delà =
+            après minuit).
+          </p>
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-line bg-white p-4">
@@ -102,8 +106,9 @@ export const ActivityTimeModal: React.FC<ActivityTimeModalProps> = ({
           <button
             type="button"
             onClick={() => {
-              if (!time) return;
-              onConfirm(time.slice(0, 5));
+              const normalized = normalizeTime(time);
+              if (!normalized) return;
+              onConfirm(normalized);
             }}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
           >

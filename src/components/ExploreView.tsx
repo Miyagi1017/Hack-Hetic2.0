@@ -22,8 +22,11 @@ import { Activity, ActivityCategory } from '../types/travel';
 import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
 import { activityMatchesInterests } from '../data/interests';
 import { formatDistance, haversineKm } from '../data/geo';
+import { compareTime, timeToMinutes } from '../data/time';
+import { getLocalCurrency, localEquivalent } from '../data/currency';
 import { SafeImage } from './SafeImage';
 import { ActivityTimeModal } from './ActivityTimeModal';
+import { TimeField } from './TimeField';
 
 interface ExploreViewProps {
   onAddActivityToTrip: (activity: Activity) => void;
@@ -82,6 +85,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [timeFilter, setTimeFilter] = useState<{ start: string; end: string } | null>(null);
   const [isCustomTime, setIsCustomTime] = useState(false);
   const [pendingTimeActivity, setPendingTimeActivity] = useState<Activity | null>(null);
+  const localCurrency = getLocalCurrency(destination);
 
   useEffect(() => {
     setValidatedCount(null);
@@ -90,7 +94,17 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const matchesTimeRange = (time: string) => {
     if (!timeFilter) return true;
     const { start, end } = timeFilter;
-    return start <= end ? time >= start && time <= end : time >= start || time <= end;
+    const startMinutes = start ? timeToMinutes(start) : null;
+    const endMinutes = end ? timeToMinutes(end) : null;
+    const minutes = timeToMinutes(time);
+
+    // Aucune borne : tout est accepté.
+    if (startMinutes == null && endMinutes == null) return true;
+    if (startMinutes == null) return minutes <= (endMinutes as number);
+    if (endMinutes == null) return minutes >= startMinutes;
+    return startMinutes <= endMinutes
+      ? minutes >= startMinutes && minutes <= endMinutes
+      : minutes >= startMinutes || minutes <= endMinutes;
   };
 
   const referencePoint: [number, number] = position ?? center ?? [41.8902, 12.4922];
@@ -145,10 +159,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           item.address.toLowerCase().includes(search)) &&
         matchesTimeRange(item.time)
     )
-    .sort((a, b) => a.time.localeCompare(b.time));
+    .sort((a, b) => compareTime(a.time, b.time));
 
   // Activités classées par horaire, pour visualiser celles qui suivent.
-  const chronological = [...filtered].sort((a, b) => a.time.localeCompare(b.time));
+  const chronological = [...filtered].sort((a, b) => compareTime(a.time, b.time));
 
   return (
     <div className="space-y-6">
@@ -202,8 +216,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-line bg-white p-1.5 shadow-xl">
                   <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
                     Toutes les activités
-                    {timeFilter ? ` · ${timeFilter.start} – ${timeFilter.end}` : ''} · classées par
-                    horaire
+                    {timeFilter
+                      ? ` · ${timeFilter.start || 'sans limite'} – ${timeFilter.end || 'sans limite'}`
+                      : ''}{' '}
+                    · classées par horaire
                   </p>
 
                   {destinationOptions.length === 0 && (
@@ -389,7 +405,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 : 'border-line bg-white text-ink-soft hover:border-line-strong'
             }`}
           >
-            Toutes
+            Sans limite
           </button>
 
           {TIME_SLOTS.map((slot) => {
@@ -436,31 +452,28 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
           {isCustomTime && (
             <span className="inline-flex items-center gap-1">
-              <input
-                type="time"
-                value={timeFilter?.start ?? '18:00'}
-                onChange={(event) =>
-                  setTimeFilter({
-                    start: event.target.value,
-                    end: timeFilter?.end ?? '23:00',
-                  })
+              <TimeField
+                value={timeFilter?.start ?? ''}
+                onChange={(value) =>
+                  setTimeFilter({ start: value, end: timeFilter?.end ?? '' })
                 }
-                aria-label="Début de la tranche horaire"
-                className="rounded-lg border border-line bg-white px-2 py-1 text-[11px] font-semibold text-ink focus:border-ink focus:outline-none"
+                ariaLabel="Début de la tranche horaire (vide = sans limite)"
+                placeholder="Début"
+                allowEmpty
+                compact
               />
               <span className="text-[10px] text-muted">→</span>
-              <input
-                type="time"
-                value={timeFilter?.end ?? '23:00'}
-                onChange={(event) =>
-                  setTimeFilter({
-                    start: timeFilter?.start ?? '18:00',
-                    end: event.target.value,
-                  })
+              <TimeField
+                value={timeFilter?.end ?? ''}
+                onChange={(value) =>
+                  setTimeFilter({ start: timeFilter?.start ?? '', end: value })
                 }
-                aria-label="Fin de la tranche horaire"
-                className="rounded-lg border border-line bg-white px-2 py-1 text-[11px] font-semibold text-ink focus:border-ink focus:outline-none"
+                ariaLabel="Fin de la tranche horaire (vide = sans limite)"
+                placeholder="Fin"
+                allowEmpty
+                compact
               />
+              <span className="text-[10px] text-muted">vide = sans limite</span>
             </span>
           )}
         </div>
@@ -635,6 +648,11 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         <Clock className="h-3 w-3" />
                         {item.duration}
                       </span>
+                      {localCurrency.code !== 'EUR' && item.price > 0 && (
+                        <span className="mt-0.5 block text-[10px] font-medium text-muted">
+                          ≈ {localEquivalent(item.price, localCurrency.code)} sur place
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-1.5">

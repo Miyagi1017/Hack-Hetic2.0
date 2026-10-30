@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Compass, 
   MapPin, 
@@ -33,6 +33,7 @@ import {
   Coins,
   RefreshCw,
   SlidersHorizontal,
+  Accessibility,
 } from 'lucide-react';
 
 import { Activity, ItineraryStep, Trip, ConflictSolution, DestinationOption, Reservation, PhotoSpotSpotlight, UserProfile } from './types/travel';
@@ -89,6 +90,11 @@ import { getCityFestivals, getCityTraditions } from './data/local-traditions';
 import { getCityRestrictions } from './data/local-restrictions';
 import { getActivityBudget, formatEuros } from './data/activity-budget';
 import { recalculateStepsRoute } from './data/route';
+import { guidedTourProvider, guidedTourReference } from './data/guided-tours';
+import { compareTime, normalizeTime } from './data/time';
+import { ComfortSettings, DEFAULT_COMFORT, applyComfort, readComfort, writeComfort } from './data/accessibility';
+import { ComfortModal } from './components/ComfortModal';
+import { CurrencyConverter } from './components/CurrencyConverter';
 import { recalculateProgramForBudget } from './data/budget-recalc';
 import {
   applyDatesToTrip,
@@ -297,6 +303,15 @@ export default function App() {
 
   // Other Modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isComfortOpen, setIsComfortOpen] = useState(false);
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [comfort, setComfort] = useState<ComfortSettings>(() => readComfort());
+
+  // Applique et mémorise les réglages de confort (thème accessible à tous)
+  useEffect(() => {
+    applyComfort(comfort);
+    writeComfort(comfort);
+  }, [comfort]);
   const [isAddStepOpen, setIsAddStepOpen] = useState(false);
   const [replacingStepIndex, setReplacingStepIndex] = useState<number | null>(null);
   const [autoLocateNearby, setAutoLocateNearby] = useState(false);
@@ -710,8 +725,7 @@ export default function App() {
   };
 
   // Add new confirmed booking
-  const handleConfirmBooking = (newRes: Reservation) => {
-    setReservations((prev) => [newRes, ...prev]);
+  const handleConfirmBooking = (newRes: Reservation) => {    setReservations((prev) => [newRes, ...prev]);
     // Mark activity confirmed in current trip
     setTrip((prev) => {
       const updatedSteps = { ...prev.steps };
@@ -725,6 +739,25 @@ export default function App() {
       return { ...prev, steps: updatedSteps };
     });
     triggerSuccessBanner();
+  };
+
+  // Réserve une visite guidée (guide francophone) sur une activité du programme
+  const handleBookGuidedTour = (activity: Activity, pricePerPerson: number) => {
+    const reservation: Reservation = {
+      id: `res-guided-${activity.id}-${Date.now()}`,
+      activityId: activity.id,
+      activityName: `${activity.name} · visite guidée`,
+      category: activity.category,
+      provider: guidedTourProvider,
+      date: trip.startDate ?? trip.dates,
+      time: activity.time,
+      travelers: trip.travelers,
+      totalPrice: pricePerPerson * trip.travelers,
+      status: 'confirmée',
+      reference: guidedTourReference(activity),
+      createdDate: new Date().toISOString(),
+    };
+    handleConfirmBooking(reservation);
   };
 
   // Handle conflict resolution from modal
@@ -887,7 +920,7 @@ export default function App() {
         });
       }
 
-      daySteps.sort((a, b) => a.activity.time.localeCompare(b.activity.time));
+      daySteps.sort((a, b) => compareTime(a.activity.time, b.activity.time));
 
       return {
         ...prev,
@@ -938,7 +971,7 @@ export default function App() {
   // Modifie l'horaire d'une étape, replace les étapes dans l'ordre et
   // recalcule les temps de trajet de la journée.
   const handleUpdateStepTime = (index: number, time: string) => {
-    const normalized = time.slice(0, 5);
+    const normalized = normalizeTime(time) ?? time;
     setTrip((prev) => {
       const daySteps = [...(prev.steps[currentDay] || [])];
       if (!daySteps[index]) return prev;
@@ -947,7 +980,7 @@ export default function App() {
         ...daySteps[index],
         activity: { ...daySteps[index].activity, time: normalized },
       };
-      daySteps.sort((a, b) => a.activity.time.localeCompare(b.activity.time));
+      daySteps.sort((a, b) => compareTime(a.activity.time, b.activity.time));
 
       return {
         ...prev,
@@ -973,14 +1006,14 @@ export default function App() {
         if (!steps?.[index] || !time) return;
         steps[index] = {
           ...steps[index],
-          activity: { ...steps[index].activity, time: time.slice(0, 5) },
+          activity: { ...steps[index].activity, time: normalizeTime(time) ?? time },
         };
       });
 
       Object.keys(nextSteps).forEach((dayKey) => {
         const day = Number(dayKey);
         nextSteps[day] = recalculateStepsRoute(
-          [...nextSteps[day]].sort((a, b) => a.activity.time.localeCompare(b.activity.time))
+          [...nextSteps[day]].sort((a, b) => compareTime(a.activity.time, b.activity.time))
         );
       });
 
@@ -1317,8 +1350,28 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Right Header: Assistant + Profile */}
+          {/* Right Header: Devise + Confort + Assistant + Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setIsCurrencyOpen(true)}
+              aria-label="Convertisseur de devises"
+              title="Convertisseur de devises"
+              className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-3 py-2 text-xs font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3.5"
+            >
+              <Coins className="h-3.5 w-3.5 text-gold" />
+              <span className="hidden sm:inline">Devise</span>
+            </button>
+
+            <button
+              onClick={() => setIsComfortOpen(true)}
+              aria-label="Réglages de confort et d'accessibilité"
+              title="Confort de lecture"
+              className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-3 py-2 text-xs font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3.5"
+            >
+              <Accessibility className="h-3.5 w-3.5 text-accent" />
+              <span className="hidden sm:inline">Confort</span>
+            </button>
+
             <button
               onClick={() => setIsChatOpen(!isChatOpen)}
               className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition-all cursor-pointer sm:px-3.5 ${
@@ -2085,6 +2138,7 @@ export default function App() {
               reservations={reservations}
               onOpenComparator={handleOpenComparator}
               plannedActivities={allPlannedActivities}
+              onBookGuidedTour={handleBookGuidedTour}
             />
           </div>
         )}
@@ -2205,6 +2259,45 @@ export default function App() {
           onApplySolution={handleApplySolution}
         />
       )}
+
+      {/* ============ CONVERTISSEUR DE DEVISES ============ */}
+      {isCurrencyOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-0 backdrop-blur-xs animate-in fade-in duration-200 sm:items-center sm:p-4"
+          onClick={() => setIsCurrencyOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Convertisseur de devises"
+        >
+          <div
+            className="relative max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-[26px]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsCurrencyOpen(false)}
+              aria-label="Fermer le convertisseur de devises"
+              className="absolute right-3 top-3 z-10 cursor-pointer rounded-full border border-line bg-white/95 p-2 text-muted shadow-sm transition-colors hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <CurrencyConverter
+              destination={trip.destination}
+              country={trip.country}
+              budgetTotal={trip.budgetTotal}
+              travelers={trip.travelers}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ============ CONFORT DE LECTURE ============ */}
+      <ComfortModal
+        isOpen={isComfortOpen}
+        onClose={() => setIsComfortOpen(false)}
+        settings={comfort}
+        onChange={(patch) => setComfort((prev) => ({ ...prev, ...patch }))}
+        onReset={() => setComfort(DEFAULT_COMFORT)}
+      />
 
       {/* ============ MODAL PROFIL EVAN ============ */}
       <ProfileModal

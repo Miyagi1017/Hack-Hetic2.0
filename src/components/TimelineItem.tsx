@@ -26,6 +26,7 @@ import {
 import { ItineraryStep, Activity, PhotoSpotSpotlight } from '../types/travel';
 import { CURATED_PHOTO_SPOTS } from '../data/mock-data';
 import { SafeImage } from './SafeImage';
+import { TimeField } from './TimeField';
 
 const TIME_PRESETS = [
   { label: 'Matin', time: '09:00' },
@@ -266,14 +267,14 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
                 </div>
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <input
-                    type="time"
-                    value={draftTime}
-                    onChange={(e) => setDraftTime(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label="Choisir l'horaire de l'activité"
-                    className="rounded-lg border border-line bg-white px-2 py-1 text-sm font-semibold text-ink focus:border-ink focus:outline-none"
-                  />
+                  <span className="contents" onClick={(e) => e.stopPropagation()}>
+                    <TimeField
+                      value={draftTime}
+                      onChange={setDraftTime}
+                      ariaLabel="Choisir l'horaire de l'activité"
+                      compact
+                    />
+                  </span>
                   <button
                     type="button"
                     onClick={(e) => {

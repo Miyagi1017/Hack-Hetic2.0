@@ -10,22 +10,27 @@ import {
   Clock, 
   MapPin, 
   TrendingDown, 
+  Camera,
   Sparkles,
   ArrowRight,
   X
 } from 'lucide-react';
 import { Reservation, Activity } from '../types/travel';
+import { guidedTourPrice, isInstagrammable } from '../data/guided-tours';
 
 interface ReservationsViewProps {
   reservations: Reservation[];
   onOpenComparator: (activity: Activity) => void;
   plannedActivities: Activity[];
+  /** Réserve une visite guidée (guide francophone) pour une activité planifiée. */
+  onBookGuidedTour?: (activity: Activity, pricePerPerson: number) => void;
 }
 
 export const ReservationsView: React.FC<ReservationsViewProps> = ({
   reservations,
   onOpenComparator,
   plannedActivities,
+  onBookGuidedTour,
 }) => {
   const [activeTicket, setActiveTicket] = useState<Reservation | null>(null);
 
@@ -35,6 +40,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
   const unreservedActivities = plannedActivities.filter(
     (act) => act.price > 0 && !reservations.some((r) => r.activityId === act.id)
   );
+
+  const guidedCandidates = unreservedActivities.slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -61,6 +68,83 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Visites guidées à réserver */}
+      {onBookGuidedTour && guidedCandidates.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h3 className="font-serif font-semibold text-xl text-ink">
+                Visites guidées à réserver
+              </h3>
+              <p className="mt-0.5 max-w-xl text-[13px] leading-relaxed text-muted">
+                Guide francophone, petits groupes et billets coupe-file : les meilleurs lieux de
+                votre itinéraire, dont les spots les plus instagrammables.
+              </p>
+            </div>
+            <span className="rounded-full bg-paper px-2.5 py-1 text-[11px] font-semibold text-muted">
+              {guidedCandidates.length} visite{guidedCandidates.length > 1 ? 's' : ''} disponible
+              {guidedCandidates.length > 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {guidedCandidates.map((activity) => {
+              const price = guidedTourPrice(activity);
+              const instagram = isInstagrammable(activity);
+              return (
+                <div
+                  key={activity.id}
+                  className="flex flex-col justify-between rounded-2xl border border-line bg-white p-4 shadow-xs"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                        <Users className="h-3 w-3" />
+                        Visite guidée · guide FR
+                      </span>
+                      {instagram && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
+                          <Camera className="h-3 w-3" />
+                          Spot Instagram
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="mt-1 line-clamp-2 font-serif text-base font-semibold leading-snug text-ink">
+                      {activity.name}
+                    </h4>
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {activity.time}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {activity.address}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+                    <p className="text-sm font-semibold text-ink">
+                      {price} €
+                      <span className="ml-1 text-[10px] font-normal text-muted">/ pers.</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onBookGuidedTour(activity, price)}
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-3.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                    >
+                      <Ticket className="h-3 w-3" />
+                      Réserver la visite
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Confirmed Reservations List */}
       <div className="space-y-4">

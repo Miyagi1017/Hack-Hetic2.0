@@ -94,8 +94,8 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
               Bonjour, {firstName}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
-              Retrouvez votre séjour prévu, ajustez vos dates ou partez à la découverte des
-              activités autour de vous.
+              Créez votre itinéraire, laissez le mode aléatoire vous surprendre, réservez vos visites
+              guidées et repérez les lieux les plus instagrammables.
             </p>
           </div>
 

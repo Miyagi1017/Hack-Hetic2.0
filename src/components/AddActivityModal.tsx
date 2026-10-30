@@ -28,6 +28,8 @@ import {
 import { activityMatchesInterests } from '../data/interests';
 import { formatDistance, haversineKm } from '../data/geo';
 import { SafeImage } from './SafeImage';
+import { TimeField } from './TimeField';
+import { normalizeTime } from '../data/time';
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -67,14 +69,6 @@ interface AddActivityModalProps {
 type BudgetMode = 'fit' | 'free' | 'all';
 
 const RADIUS_OPTIONS = [1, 3, 5, 10, 25] as const;
-
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
-  const hours = Math.floor(index / 2)
-    .toString()
-    .padStart(2, '0');
-  const minutes = index % 2 === 0 ? '00' : '30';
-  return `${hours}:${minutes}`;
-});
 
 const DURATION_OPTIONS = ['30 min', '45 min', '1h', '1h30', '2h', '2h30', '3h', '4h', 'Journée'];
 
@@ -358,7 +352,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
       address: address.trim() || `Centre historique, ${city}`,
       lat: selectedCoords ? selectedCoords[0] : center[0] + (Math.random() - 0.5) * 0.02,
       lng: selectedCoords ? selectedCoords[1] : center[1] + (Math.random() - 0.5) * 0.02,
-      time,
+      time: normalizeTime(time) ?? time,
       duration,
       price: parseFloat(price) || 0,
       image: 'https://images.unsplash.com/photo-1525874684015-58379d421a52?auto=format&fit=crop&w=600&q=80',
@@ -959,17 +953,11 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                     <Clock className="h-3 w-3 text-muted" />
                     Heure prévue
                   </label>
-                  <select
+                  <TimeField
                     value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm font-medium text-ink focus:border-ink focus:outline-none"
-                  >
-                    {TIME_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setTime}
+                    ariaLabel="Heure prévue pour l'étape"
+                  />
                 </div>
               </div>
 

@@ -325,3 +325,80 @@ input[type='range'].budget-range:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   Mode confort — un thème simple et lisible pour tous les âges
+   (activé depuis le bouton « Confort » de l'en-tête)
+   ============================================================ */
+html[data-font-scale='large'] {
+  font-size: 17px;
+}
+
+html[data-font-scale='xlarge'] {
+  font-size: 19.5px;
+}
+
+html[data-contrast='high'] {
+  --color-paper: #ffffff;
+  --color-paper-deep: #f4f4f4;
+  --color-ink: #0b0a08;
+  --color-ink-soft: #1b1915;
+  --color-muted: #3a362f;
+  --color-line: #b7b0a2;
+  --color-line-strong: #837c6f;
+  --color-accent: #94401f;
+  --color-accent-soft: #fdeee6;
+}
+
+html[data-contrast='high'] body {
+  background-color: #ffffff;
+}
+
+html[data-contrast='high'] .text-muted {
+  color: #3a362f !important;
+}
+
+html[data-contrast='high'] .bg-paper {
+  background-color: #f6f5f3 !important;
+}
+
+html[data-contrast='high'] .border-line {
+  border-color: #b7b0a2 !important;
+}
+
+html[data-contrast='high'] .shadow-xs,
+html[data-contrast='high'] .shadow-2xs,
+html[data-contrast='high'] .shadow-sm {
+  box-shadow: 0 1px 0 rgba(11, 10, 8, 0.14) !important;
+}
+
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-targets='large'] button,
+html[data-targets='large'] a[href],
+html[data-targets='large'] input,
+html[data-targets='large'] select,
+html[data-targets='large'] [role='switch'] {
+  min-height: 44px;
+}
+
+html[data-targets='large'] button[aria-label] {
+  min-width: 44px;
+}
+
+html[data-links='underlined'] a[href] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html[data-contrast='high'] :focus-visible {
+  outline: 3px solid #0b0a08;
+  outline-offset: 3px;
+}

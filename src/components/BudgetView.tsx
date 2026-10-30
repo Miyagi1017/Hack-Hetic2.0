@@ -16,7 +16,9 @@ import {
 } from 'lucide-react';
 import { Trip } from '../types/travel';
 import { getActivityBudget } from '../data/activity-budget';
+import { getLocalCurrency, localEquivalent } from '../data/currency';
 import { BudgetPlanner } from './BudgetPlanner';
+import { CurrencyConverter } from './CurrencyConverter';
 
 interface BudgetViewProps {
   trip: Trip;
@@ -40,6 +42,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 }) => {
   const city = trip.destination.split(',')[0];
   const activityBudget = getActivityBudget(trip);
+  const localCurrency = getLocalCurrency(trip.destination, trip.country);
 
   // Aggregate activities from all days
   const allActivities = Object.values(trip.steps).flat().map((s) => s.activity);
@@ -155,6 +158,11 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
             <p className="mt-1 font-serif text-3xl font-semibold text-ink">
               {totalCalculated.toFixed(0)} €
             </p>
+            {localCurrency.code !== 'EUR' && (
+              <p className="mt-0.5 text-[11px] font-medium text-muted">
+                ≈ {localEquivalent(totalCalculated, localCurrency.code)} sur place
+              </p>
+            )}
             <p
               className={`mt-2 text-[11px] font-medium ${
                 remaining >= 0 ? 'text-emerald-700' : 'text-amber-700'
@@ -214,6 +222,15 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
           profileStyle={profileStyle}
         />
       )}
+
+      {/* Conversion en devise locale */}
+      <CurrencyConverter
+        destination={trip.destination}
+        country={trip.country}
+        budgetTotal={trip.budgetTotal}
+        travelers={trip.travelers}
+        totalCalculated={totalCalculated}
+      />
 
       {/* Activités compatibles avec l'enveloppe */}
       {onPickBudgetActivity && (
