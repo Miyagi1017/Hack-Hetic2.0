@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  ArrowRight,
   Footprints,
   Train,
   Car,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import { ItineraryStep, Activity, PhotoSpotSpotlight } from '../types/travel';
 import { CURATED_PHOTO_SPOTS } from '../data/mock-data';
+import { formatDistance, haversineKm } from '../data/geo';
 import { SafeImage } from './SafeImage';
 import { TimeField } from './TimeField';
 
@@ -51,6 +53,8 @@ interface TimelineItemProps {  step: ItineraryStep;
   onMoveDown?: () => void;
   onReplace?: () => void;
   onUpdateTime?: (time: string) => void;
+  /** Étape suivante : sert à afficher le trajet entre les deux étapes. */
+  nextStep?: ItineraryStep;
 }
 
 export const TimelineItem: React.FC<TimelineItemProps> = ({
@@ -68,6 +72,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   onMoveDown,
   onReplace,
   onUpdateTime,
+  nextStep,
 }) => {
   const act = step.activity;
   const isConflict = !!step.conflict;
@@ -105,6 +110,43 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
         return <Footprints className="w-3.5 h-3.5" />;
     }
   };
+
+  // Vue du trajet entre cette étape et la suivante
+  const leg = nextStep?.travel;
+  const legDistance =
+    leg &&
+    nextStep &&
+    act.lat != null &&
+    act.lng != null &&
+    nextStep.activity.lat != null &&
+    nextStep.activity.lng != null
+      ? formatDistance(haversineKm([act.lat, act.lng], [nextStep.activity.lat, nextStep.activity.lng]))
+      : null;
+
+  const travelMode =
+    leg?.mode === 'Marche'
+      ? 'walking'
+      : leg?.mode === 'Vélo'
+        ? 'bicycling'
+        : leg?.mode === 'Voiture' || leg?.mode === 'Uber'
+          ? 'driving'
+          : 'transit';
+
+  const point = (lat?: number, lng?: number, address?: string) =>
+    lat != null && lng != null ? `${lat},${lng}` : encodeURIComponent(address ?? '');
+
+  const directionsUrl =
+    leg && nextStep
+      ? `https://www.google.com/maps/dir/?api=1&origin=${point(
+          act.lat,
+          act.lng,
+          act.address
+        )}&destination=${point(
+          nextStep.activity.lat,
+          nextStep.activity.lng,
+          nextStep.activity.address
+        )}&travelmode=${travelMode}`
+      : null;
 
   return (
     <div className="group relative">
@@ -409,23 +451,56 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
       {/* ============ LIAISON TRANSPORT & PASSAGE PAYSAGER ============ */}
       {index < totalSteps - 1 && (
         <div className="px-4 py-2 sm:px-5">
-          {step.travel && (
-            <div className="flex items-center gap-3">
-              <div className="flex w-[72px] shrink-0 justify-center sm:w-20">
-                <div className="h-8 w-px bg-line" />
+          {leg && nextStep && (
+            <div className="flex items-stretch gap-2.5">
+              {/* Ligne verticale + icône du mode de transport */}
+              <div className="flex w-[72px] shrink-0 flex-col items-center sm:w-20">
+                <div className="h-2 w-px bg-line" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-white text-ink shadow-2xs">
+                  {getTransportIcon(leg.mode)}
+                </span>
+                <div className="w-px flex-1 bg-line" />
               </div>
-              <div className="flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-[11px] text-ink shadow-2xs">
-                <span className="text-muted">{getTransportIcon(step.travel.mode)}</span>
-                <span className="font-semibold">{step.travel.mode}</span>
-                <span className="text-line-strong">·</span>
-                <span className="text-muted">{step.travel.duration}</span>
-                {step.travel.cost > 0 && (
-                  <>
-                    <span className="text-line-strong">·</span>
-                    <span className="font-semibold text-emerald-700">
-                      {step.travel.cost.toFixed(2)} €
-                    </span>
-                  </>
+
+              {/* Détail du trajet */}
+              <div className="min-w-0 flex-1 rounded-2xl border border-line bg-paper/70 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]">
+                  <span className="font-semibold text-ink">{leg.mode}</span>
+                  <span className="text-line-strong">·</span>
+                  <span className="text-muted">{leg.duration}</span>
+                  {legDistance && (
+                    <>
+                      <span className="text-line-strong">·</span>
+                      <span className="text-muted">{legDistance}</span>
+                    </>
+                  )}
+                  {leg.cost > 0 && (
+                    <>
+                      <span className="text-line-strong">·</span>
+                      <span className="font-semibold text-emerald-700">
+                        {leg.cost.toFixed(2)} €
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
+                  <span className="truncate">{act.name}</span>
+                  <ArrowRight className="h-3 w-3 shrink-0 text-line-strong" />
+                  <span className="truncate">{nextStep.activity.name}</span>
+                </p>
+
+                {directionsUrl && (
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-accent hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Voir l'itinéraire sur Google Maps
+                  </a>
                 )}
               </div>
             </div>

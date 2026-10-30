@@ -1356,9 +1356,9 @@ export default function App() {
               onClick={() => setIsCurrencyOpen(true)}
               aria-label="Convertisseur de devises"
               title="Convertisseur de devises"
-              className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-3 py-2 text-xs font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3.5"
+              className="flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-line bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3"
             >
-              <Coins className="h-3.5 w-3.5 text-gold" />
+              <Coins className="h-3 w-3 text-gold" />
               <span className="hidden sm:inline">Devise</span>
             </button>
 
@@ -1366,9 +1366,9 @@ export default function App() {
               onClick={() => setIsComfortOpen(true)}
               aria-label="Réglages de confort et d'accessibilité"
               title="Confort de lecture"
-              className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-3 py-2 text-xs font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3.5"
+              className="flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-line bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink shadow-2xs transition-all hover:bg-paper sm:px-3"
             >
-              <Accessibility className="h-3.5 w-3.5 text-accent" />
+              <Accessibility className="h-3 w-3 text-accent" />
               <span className="hidden sm:inline">Confort</span>
             </button>
 
@@ -2000,6 +2000,7 @@ export default function App() {
                       step={step}
                       index={idx}
                       totalSteps={currentSteps.length}
+                      nextStep={currentSteps[idx + 1]}
                       isSelected={selectedActivity?.id === step.activity.id}
                       onSelect={() => setSelectedActivity(step.activity)}
                       onOpenConflict={() => setActiveConflictStep(step)}
