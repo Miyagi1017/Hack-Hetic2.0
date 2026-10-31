@@ -48,9 +48,6 @@ import {
 } from './data/mock-data';
 import { InteractiveMap } from './components/InteractiveMap';
 import { TimelineItem } from './components/TimelineItem';
-import { DayPartHeader } from './components/DayPartHeader';
-import { CityEventsStrip } from './components/CityEventsStrip';
-import { groupStepsByDayPart } from './data/day-parts';
 import { SafeImage } from './components/SafeImage';
 import { ContextPanel } from './components/ContextPanel';
 import { ConflictResolutionModal } from './components/ConflictResolutionModal';
@@ -1406,18 +1403,13 @@ export default function App() {
         {/* ============ RESOLUTION / SUCCESS BANNER ============ */}
         {resolvedBanner && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-xs animate-in sm:p-5">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                <CheckCircle className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-emerald-950 sm:text-[15px]">
-                  Itinéraire & réservations synchronisés
-                </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-emerald-800 sm:text-[13px]">
-                  Aucun conflit d'horaires. Carte à jour, billets coupe-file prêts et trajet optimisé.
-                </p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-emerald-950 sm:text-[15px]">
+                Itinéraire & réservations synchronisés
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-emerald-800 sm:text-[13px]">
+                Aucun conflit d'horaires. Carte à jour, billets coupe-file prêts et trajet optimisé.
+              </p>
             </div>
             <button
               onClick={() => setResolvedBanner(false)}
@@ -1433,10 +1425,7 @@ export default function App() {
         {randomNotice && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-gold/40 bg-gold-soft/80 p-4 shadow-xs animate-in sm:p-5">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gold ring-1 ring-gold/30">
-                <Dices className="h-4 w-4" />
-              </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink">Programme aléatoire appliqué</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{randomNotice}</p>
               </div>
@@ -1454,14 +1443,9 @@ export default function App() {
         {/* ============ BUDGET RECALC NOTICE ============ */}
         {budgetNotice && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-xs animate-in sm:p-5">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-emerald-700 ring-1 ring-emerald-200">
-                <Coins className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-ink">Budget validé et programme ajusté</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{budgetNotice}</p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">Budget validé et programme ajusté</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{budgetNotice}</p>
             </div>
             <button
               onClick={() => setBudgetNotice(null)}
@@ -1477,10 +1461,7 @@ export default function App() {
         {globalNotice && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50/90 p-4 shadow-xs animate-in sm:p-5">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-violet-700 ring-1 ring-violet-200">
-                <RefreshCw className="h-4 w-4" />
-              </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink">Tout a été recalculé</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{globalNotice}</p>
               </div>
@@ -1873,52 +1854,29 @@ export default function App() {
                   </span>
                 </div>
 
-                <CityEventsStrip
-                  city={cityName}
-                  country={trip.country}
-                  festivals={cityFestivals}
-                  traditions={cityTraditions}
-                  onSeeAll={() => setActiveTab('restrictions')}
-                />
-
                 <div className="space-y-0">
-                  {groupStepsByDayPart(currentSteps).map((section, sectionIndex) => (
-                    <div key={section.part.id}>
-                      <DayPartHeader
-                        part={section.part}
-                        count={section.steps.length}
-                        isFirst={sectionIndex === 0}
-                      />
-
-                      {section.steps.map((step) => {
-                        const idx = currentSteps.indexOf(step);
-                        return (
-                          <TimelineItem
-                            key={step.activity.id}
-                            step={step}
-                            index={idx}
-                            totalSteps={currentSteps.length}
-                            nextStep={currentSteps[idx + 1]}
-                            isSelected={selectedActivity?.id === step.activity.id}
-                            onSelect={() => setSelectedActivity(step.activity)}
-                            onOpenConflict={() => setActiveConflictStep(step)}
-                            onOpenComparator={handleOpenComparator}
-                            onOpenPhotoSpot={handleOpenPhotoSpot}
-                            onToggleWishlist={handleToggleWishlist}
-                            isWishlisted={wishlist.some((w) => w.id === step.activity.id)}
-                            onUpdateRating={handleUpdateRating}
-                            onMoveUp={idx > 0 ? () => handleMoveStep(idx, 'up') : undefined}
-                            onMoveDown={
-                              idx < currentSteps.length - 1
-                                ? () => handleMoveStep(idx, 'down')
-                                : undefined
-                            }
-                            onReplace={() => handleStartReplace(idx)}
-                            onUpdateTime={(time) => handleUpdateStepTime(idx, time)}
-                          />
-                        );
-                      })}
-                    </div>
+                  {currentSteps.map((step, idx) => (
+                    <TimelineItem
+                      key={step.activity.id}
+                      step={step}
+                      index={idx}
+                      totalSteps={currentSteps.length}
+                      nextStep={currentSteps[idx + 1]}
+                      isSelected={selectedActivity?.id === step.activity.id}
+                      onSelect={() => setSelectedActivity(step.activity)}
+                      onOpenConflict={() => setActiveConflictStep(step)}
+                      onOpenComparator={handleOpenComparator}
+                      onOpenPhotoSpot={handleOpenPhotoSpot}
+                      onToggleWishlist={handleToggleWishlist}
+                      isWishlisted={wishlist.some((w) => w.id === step.activity.id)}
+                      onUpdateRating={handleUpdateRating}
+                      onMoveUp={idx > 0 ? () => handleMoveStep(idx, 'up') : undefined}
+                      onMoveDown={
+                        idx < currentSteps.length - 1 ? () => handleMoveStep(idx, 'down') : undefined
+                      }
+                      onReplace={() => handleStartReplace(idx)}
+                      onUpdateTime={(time) => handleUpdateStepTime(idx, time)}
+                    />
                   ))}
 
                   {currentSteps.length === 0 && (

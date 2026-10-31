@@ -2,21 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Search,
   MapPin,
-  Calendar,
-  Users,  Star,
   Plus,
   Check,
-  Clock,
-  Compass,
-  Sparkles,
-  Heart,
-  Navigation,
-  Pencil,
-  RefreshCw,
-  CheckCircle2,
-  ArrowRight,
   ChevronDown,
-  LocateFixed,
 } from 'lucide-react';
 import { Activity, ActivityCategory } from '../types/travel';
 import { POPULAR_RECOMMENDATIONS } from '../data/mock-data';
@@ -115,13 +103,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
       ? haversineKm(referencePoint, [item.lat, item.lng])
       : null;
 
-  const categories: { label: ActivityCategory | 'Tous'; emoji: string }[] = [
-    { label: 'Tous', emoji: '✨' },
-    { label: 'Gastronomie', emoji: '🍝' },
-    { label: 'Culture', emoji: '🏛️' },
-    { label: 'Nature', emoji: '🌿' },
-    { label: 'Insolite', emoji: '🗝️' },
-    { label: 'Vie nocturne', emoji: '🌙' },
+  const categories: { label: ActivityCategory | 'Tous' }[] = [
+    { label: 'Tous' },
+    { label: 'Gastronomie' },
+    { label: 'Culture' },
+    { label: 'Nature' },
+    { label: 'Insolite' },
+    { label: 'Vie nocturne' },
   ];
 
   const search = searchQuery.trim().toLowerCase();
@@ -268,11 +256,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             title="Modifier les dates et le nombre de voyageurs"
             className="group flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-paper px-3.5 py-3 text-left text-sm text-ink-soft transition-colors hover:border-accent/40 hover:bg-white disabled:cursor-default disabled:hover:border-line disabled:hover:bg-paper"
           >
-            <Calendar className="h-4 w-4 shrink-0 text-muted" />
             <span className="truncate">{dates}</span>
-            {onEditDates && (
-              <Pencil className="ml-auto h-3 w-3 shrink-0 text-muted transition-colors group-hover:text-accent" />
-            )}
           </button>
 
           <button
@@ -282,13 +266,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             title="Modifier le nombre de voyageurs"
             className="group flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-paper px-3.5 py-3 text-left text-sm text-ink-soft transition-colors hover:border-accent/40 hover:bg-white disabled:cursor-default disabled:hover:border-line disabled:hover:bg-paper"
           >
-            <Users className="h-4 w-4 shrink-0 text-muted" />
             <span>
               {travelers} voyageur{travelers > 1 ? 's' : ''}
             </span>
-            {onEditDates && (
-              <Pencil className="ml-auto h-3 w-3 shrink-0 text-muted transition-colors group-hover:text-accent" />
-            )}
           </button>
         </div>
 
@@ -305,7 +285,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                   : 'border border-line bg-white text-muted hover:border-line-strong hover:text-ink'
               }`}
             >
-              <span>{cat.emoji}</span>
               <span>{cat.label}</span>
             </button>
           ))}
@@ -320,11 +299,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 : 'border-line bg-white text-muted hover:border-line-strong hover:text-ink'
             }`}
           >
-            <Heart
-              className={`h-3.5 w-3.5 ${
-                onlyInterests ? 'fill-rose-500 text-rose-500' : 'text-rose-400'
-              }`}
-            />
             {onlyInterests ? 'Mes envies ✓' : 'Mes envies'}
             {interests.length > 0 && (
               <span className="rounded-full bg-white/70 px-1.5 text-[10px] text-ink-soft">
@@ -357,7 +331,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 : 'border-line bg-white text-muted hover:border-line-strong hover:text-ink'
             }`}
           >
-            <LocateFixed className="h-3.5 w-3.5" />
             Autour de moi
           </button>
 
@@ -488,7 +461,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             {validatedCount != null && (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" />
                 Choix validés · {validatedCount} adresse{validatedCount > 1 ? 's' : ''} · trajets
                 recalculés
               </span>
@@ -568,9 +540,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
                   <div className="absolute right-3 top-3 flex items-center gap-1.5">
                     {item.rating && (
-                      <span className="flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-xs backdrop-blur-sm">
-                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        {item.rating}
+                      <span className="rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-xs backdrop-blur-sm">
+                        {item.rating} / 5
                       </span>
                     )}
 
@@ -582,15 +553,12 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         }}
                         title={wishlistIds.includes(item.id) ? "Retirer de ma liste d'envies" : "Ajouter à ma liste d'envies"}
                         aria-label={wishlistIds.includes(item.id) ? "Retirer de ma liste d'envies" : "Ajouter à ma liste d'envies"}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-xs backdrop-blur-sm hover:scale-105"
+                        aria-pressed={wishlistIds.includes(item.id)}
+                        className={`rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold shadow-xs backdrop-blur-sm ${
+                          wishlistIds.includes(item.id) ? 'text-rose-600' : 'text-ink-soft'
+                        }`}
                       >
-                        <Heart
-                          className={`h-3.5 w-3.5 ${
-                            wishlistIds.includes(item.id)
-                              ? 'fill-rose-500 text-rose-500'
-                              : 'text-ink-soft'
-                          }`}
-                        />
+                        {wishlistIds.includes(item.id) ? 'Gardé' : 'Garder'}
                       </button>
                     )}
                   </div>
@@ -601,21 +569,15 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     <h4 className="font-serif text-lg font-semibold leading-snug text-ink">
                       {item.name}
                     </h4>
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-muted">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{item.address}</span>
-                    </p>
+                    <p className="mt-1 truncate text-[11px] text-muted">{item.address}</p>
                     <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-ink-soft/90">
                       {item.description}
                     </p>
 
                     {nextItem && (
-                      <p className="mt-2 flex items-start gap-1 text-[10px] leading-relaxed text-muted">
-                        <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-accent" />
-                        <span>
-                          Ensuite :{' '}
-                          <span className="font-semibold text-ink-soft">{nextItem.name}</span>
-                        </span>
+                      <p className="mt-2 text-[10px] leading-relaxed text-muted">
+                        <span className="text-accent">→</span> Ensuite :{' '}
+                        <span className="font-semibold text-ink-soft">{nextItem.name}</span>
                       </p>
                     )}
                   </div>
@@ -640,10 +602,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                           {item.price > 0 ? `${item.price} €` : 'Gratuit'}
                         </span>
                       )}
-                      <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
-                        <Clock className="h-3 w-3" />
-                        {item.duration}
-                      </span>
+                      <span className="mt-0.5 block text-[10px] text-muted">{item.duration}</span>
                       {localCurrency.code !== 'EUR' && item.price > 0 && (
                         <span className="mt-0.5 block text-[10px] font-medium text-muted">
                           ≈ {localEquivalent(item.price, localCurrency.code)} sur place

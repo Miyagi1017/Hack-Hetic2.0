@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Ticket, 
-  QrCode, 
-  CheckCircle2, 
-  Users, 
-  Clock, 
-  MapPin, 
-  Camera,
-  X
-} from 'lucide-react';
+import { QrCode, X } from 'lucide-react';
 import { Reservation, Activity } from '../types/travel';
 import { guidedTourPrice, isInstagrammable } from '../data/guided-tours';
 
@@ -92,13 +83,11 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
-                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
-                        <Users className="h-3 w-3" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
                         Visite guidée · guide FR
                       </span>
                       {instagram && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
-                          <Camera className="h-3 w-3" />
+                        <span className="inline-flex shrink-0 items-center rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-semibold text-pink-700">
                           Spot Instagram
                         </span>
                       )}
@@ -106,15 +95,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
                     <h4 className="mt-1 line-clamp-2 font-serif text-base font-semibold leading-snug text-ink">
                       {activity.name}
                     </h4>
-                    <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {activity.time}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {activity.address}
-                      </span>
+                    <p className="mt-1 text-[11px] text-muted">
+                      {activity.time} · {activity.address}
                     </p>
                   </div>
 
@@ -126,10 +108,9 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onBookGuidedTour(activity, price)}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-ink px-3.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
+                      className="inline-flex cursor-pointer items-center rounded-full bg-ink px-3.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-ink-soft"
                     >
-                      <Ticket className="h-3 w-3" />
-                      Réserver la visite
+                      Réserver
                     </button>
                   </div>
                 </div>
@@ -156,8 +137,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({
                   <span className="bg-ink text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
                     {res.provider}
                   </span>
-                  <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Confirmé
+                  <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Confirmé
                   </span>
                 </div>
 
